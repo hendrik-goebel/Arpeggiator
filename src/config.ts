@@ -1,0 +1,10 @@
+export const DEFAULT_BPM = 120
+export const DEFAULT_NOTE_LENGTH = 200
+export const CHANNEL_COUNT = 8
+export const STEP_COUNT = 8
+export const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
+export const OCTAVE_OFFSET = -1
+export const DEFAULT_STEPS = [0,1,2,0,1,2,0,1]
+export const DEFAULT_NOTES = [60,64,67]
+export const DEFAULT_BASE = 60
+export const KEYBOARD_OCTAVE_SIZE = 12

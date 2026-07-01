@@ -1,0 +1,43 @@
+<template>
+  <div class="arpeggiator-panel">
+    <h2>{{ channel.name }} Arpeggiator</h2>
+    <div class="controls">
+      <label>Tempo (BPM): <input type="number" :value="channel.bpm" @input="$emit('update-bpm', +$event.target.value)" min="20" max="300" /></label>
+      <label>Pattern:
+        <select :value="channel.pattern" @change="$emit('update-pattern', $event.target.value)">
+          <option value="up">Up</option>
+          <option value="down">Down</option>
+          <option value="updown">UpDown</option>
+          <option value="random">Random</option>
+          <option value="custom">Custom</option>
+        </select>
+      </label>
+      <label>Note length (ms): <input type="number" :value="channel.noteLength" @input="$emit('update-noteLength', +$event.target.value)" min="50" max="2000" /></label>
+      <button @click="$emit('toggle-play')">{{ channel.playing ? 'Stop' : 'Play' }}</button>
+      <button @click="$emit('enable-midi')">Enable MIDI</button>
+      <label>Output:
+        <select :value="selectedOutputId" @change="$emit('select-output', $event.target.value)">
+          <option v-for="o in outputs" :key="o.id" :value="o.id">{{ o.name }}</option>
+        </select>
+      </label>
+    </div>
+
+    <StepEditor v-if="channel.pattern === 'custom'" :steps="channel.steps" :notes="channel.notes" @cycle="$emit('cycle-step', $event)" />
+
+    <Keyboard :notes="channel.notes" :base="channel.base" @toggle="$emit('toggle-note', $event)" />
+
+    <LogPanel :lines="log" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import Keyboard from './Keyboard.vue'
+import StepEditor from './StepEditor.vue'
+import LogPanel from './LogPanel.vue'
+const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
+</script>
+
+<style scoped>
+.arpeggiator-panel { border-top:1px solid #eee; padding-top:1rem }
+.controls { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap }
+</style>
