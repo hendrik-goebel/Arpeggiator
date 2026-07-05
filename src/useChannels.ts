@@ -74,10 +74,15 @@ export function useChannels() {
   function setSyncChannels(v:boolean){
     // Toggle sync mode without changing any channel play states.
     // When enabling, ensure all arpeggiators use the global BPM but do not mutate channel BPM fields.
+    // When disabling, restore each arpeggiator to its channel's local BPM so channels once again use their own tempo.
     syncChannels.value = v
     if (v) {
       channels.forEach(ch => {
         ch.ar.setBpm(globalBpm.value)
+      })
+    } else {
+      channels.forEach(ch => {
+        ch.ar.setBpm(ch.bpm)
       })
     }
   }
