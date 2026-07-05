@@ -70,7 +70,15 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
     intervalId = null
   }
 
-  function setBpm(v:number){ bpm = v; if (playing){ stop(); start() } }
+  function setBpm(v:number){
+    bpm = v
+    if (playing) {
+      // change interval without immediately triggering a note
+      if (intervalId) clearInterval(intervalId)
+      const intervalMs = 60000 / bpm
+      intervalId = setInterval(tick, intervalMs)
+    }
+  }
   function setPattern(p:Pattern){ pattern = p }
   function setNotes(n:number[]){ notes = n; index = 0; direction = 1 }
   function setNoteLength(ms:number){ noteLength = ms }
