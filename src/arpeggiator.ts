@@ -14,6 +14,7 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   let stepIndex = 0
   let direction = 1
   let steps: number[] = [] // indexes into notes[] or -1 for rest
+  let lastTickAt = 0
 
   function tick() {
     if (!notes.length) return
@@ -51,6 +52,9 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
       sendNote(noteToPlay, 0x7f, noteLength)
     }
 
+    // record last tick time
+    lastTickAt = Date.now()
+
     // apply any pending BPM change at the end of this tick so tempo changes occur on the next beat
     if (pendingBpm != null) {
       bpm = pendingBpm
@@ -75,11 +79,51 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
     intervalId = setInterval(tick, intervalMs)
   }
 
+  function startAlignedTo(other:any){
+    if (playing) return
+    if (!notes.length) return
+    // copy position state from other if available
+    try {
+      const s = other.getState()
+      index = s.index
+      stepIndex = s.stepIndex
+      direction = s.direction
+      pattern = s.pattern
+    } catch (e) {
+      // ignore if other doesn't expose state
+    }
+
+    // schedule first tick to align with other's next tick
+    const delay = (typeof other.timeToNextTick === 'function') ? other.timeToNextTick() : 0
+    playing = true
+    // do not call tick immediately; set timer to call tick in sync
+    const intervalMs = 60000 / bpm
+    intervalId = setTimeout(() => {
+      tick()
+      // then set recurring interval
+      if (intervalId) clearInterval(intervalId)
+      intervalId = setInterval(tick, intervalMs)
+    }, delay)
+  }
+
+  function timeToNextTick(){
+    if (!lastTickAt) return 0
+    const intervalMs = 60000 / bpm
+    const elapsed = Date.now() - lastTickAt
+    return Math.max(0, intervalMs - (elapsed % intervalMs))
+  }
+
+  function getState(){
+    return { index, stepIndex, direction, pattern }
+  }
+
   function stop(){
     if (!playing) return
     playing = false
-    if (intervalId) clearInterval(intervalId)
-    intervalId = null
+    if (intervalId) {
+      clearInterval(intervalId)
+      intervalId = null
+    }
   }
 
   function setBpm(v:number){
@@ -95,5 +139,5 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   function setNoteLength(ms:number){ noteLength = ms }
   function setSteps(s:number[]){ steps = s; stepIndex = 0 }
 
-  return { start, stop, setBpm, setPattern, setNotes, setNoteLength, setSteps }
+  return { start, startAlignedTo, stop, setBpm, setPattern, setNotes, setNoteLength, setSteps, getState, timeToNextTick }
 }

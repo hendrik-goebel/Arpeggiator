@@ -93,14 +93,29 @@ export function useChannels() {
     if (ch.playing) {
       ch.ar.stop(); ch.playing = false
     } else {
-      ch.ar.start(); ch.playing = true
+      // if any other channel is playing, align this channel's first note to them
+      const refCh = channels.find(c => c.playing && c !== ch)
+      if (refCh && typeof ch.ar.startAlignedTo === 'function') {
+        ch.ar.startAlignedTo(refCh.ar)
+      } else {
+        ch.ar.start()
+      }
+      ch.playing = true
     }
   }
 
   function togglePlay(){
     const ch = currentChannel.value
     if (ch.playing) { ch.ar.stop(); ch.playing = false }
-    else { ch.ar.start(); ch.playing = true }
+    else {
+      const refCh = channels.find(c => c.playing && c !== ch)
+      if (refCh && typeof ch.ar.startAlignedTo === 'function') {
+        ch.ar.startAlignedTo(refCh.ar)
+      } else {
+        ch.ar.start()
+      }
+      ch.playing = true
+    }
   }
 
   function toggleNote(n:number){
