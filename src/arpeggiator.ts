@@ -6,6 +6,7 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   let notes: number[] = []
   let playing = false
   let bpm = DEFAULT_BPM
+  let pendingBpm: number | null = null
   let intervalId: any = null
   let pattern: Pattern = 'up'
   let noteLength = DEFAULT_NOTE_LENGTH
@@ -49,6 +50,17 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
     if (noteToPlay != null) {
       sendNote(noteToPlay, 0x7f, noteLength)
     }
+
+    // apply any pending BPM change at the end of this tick so tempo changes occur on the next beat
+    if (pendingBpm != null) {
+      bpm = pendingBpm
+      pendingBpm = null
+      if (intervalId) {
+        clearInterval(intervalId)
+        const intervalMs = 60000 / bpm
+        intervalId = setInterval(tick, intervalMs)
+      }
+    }
   }
 
   function start(){
@@ -71,12 +83,11 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   }
 
   function setBpm(v:number){
-    bpm = v
     if (playing) {
-      // change interval without immediately triggering a note
-      if (intervalId) clearInterval(intervalId)
-      const intervalMs = 60000 / bpm
-      intervalId = setInterval(tick, intervalMs)
+      // defer tempo change until the end of the current tick to avoid sudden notes
+      pendingBpm = v
+    } else {
+      bpm = v
     }
   }
   function setPattern(p:Pattern){ pattern = p }
