@@ -9,6 +9,7 @@ export function useChannels() {
   const selectedOutputId = ref<string | null>(null)
 
   function makeChannel(i:number) {
+    const palette = ['#f28b82','#fbbc04','#fff475','#ccff90','#a7ffeb','#cbf0f8','#aecbfa','#d7aefb']
     const ch = reactive({
       id: i,
       name: `Ch ${i+1}`,
@@ -19,13 +20,19 @@ export function useChannels() {
       notes: DEFAULT_NOTES.slice() as number[],
       steps: DEFAULT_STEPS.slice() as number[],
       base: DEFAULT_BASE,
-      ar: null as any
+      ar: null as any,
+      color: palette[i % palette.length],
+      active: false
     })
 
     ch.ar = createArpeggiator((note, vel, len) => {
       const outId = selectedOutputId.value
       if (outId) sendNote(outId, note, vel, len)
       log.value.unshift(`${new Date().toISOString()} ${ch.name} NOTE ${note} vel=${vel} len=${len}`)
+      // flash the channel button while the note sounds
+      ch.active = true
+      const timeoutMs = Math.max(len || ch.noteLength || 120, 120)
+      setTimeout(() => { ch.active = false }, timeoutMs)
     })
 
     ch.ar.setBpm(ch.bpm)

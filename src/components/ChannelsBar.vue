@@ -1,7 +1,7 @@
 <template>
   <div class="channels">
     <div v-for="(ch, i) in channels" :key="ch.id" class="channel" :class="{selected: i === currentIndex}">
-      <button @click="$emit('select', i)" class="ch-select">{{ ch.name }}</button>
+      <button @click="$emit('select', i)" class="ch-select" :style="{ background: ch.active ? ch.color : '' }">{{ ch.name }}</button>
       <button @click.stop="$emit('toggle', i)" :class="{playing: ch.playing}">{{ ch.playing ? 'Stop' : 'Start' }}</button>
     </div>
   </div>
