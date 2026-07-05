@@ -54,7 +54,8 @@ export function useChannels() {
   function setGlobalBpm(v:number){
     globalBpm.value = v
     if (syncChannels.value) {
-      channels.forEach(ch => { ch.bpm = v; ch.ar.setBpm(v) })
+      // Apply global tempo to running clocks but do not change channel BPM fields
+      channels.forEach(ch => { ch.ar.setBpm(v) })
     }
   }
 
@@ -72,11 +73,10 @@ export function useChannels() {
 
   function setSyncChannels(v:boolean){
     // Toggle sync mode without changing any channel play states.
-    // When enabling, align all channel BPMs to the global BPM but do not start/stop any arpeggiators.
+    // When enabling, ensure all arpeggiators use the global BPM but do not mutate channel BPM fields.
     syncChannels.value = v
     if (v) {
       channels.forEach(ch => {
-        ch.bpm = globalBpm.value
         ch.ar.setBpm(globalBpm.value)
       })
     }
@@ -135,9 +135,9 @@ export function useChannels() {
 
   function updateBpm(v:number){
     if (syncChannels.value) {
-      // update the global BPM and apply to all channels
+      // update the global BPM and apply to all running clocks; do not change channel BPM fields
       globalBpm.value = v
-      channels.forEach(c => { c.bpm = v; c.ar.setBpm(v) })
+      channels.forEach(c => { c.ar.setBpm(v) })
     } else {
       currentChannel.value.ar.setBpm(v); currentChannel.value.bpm = v
     }
