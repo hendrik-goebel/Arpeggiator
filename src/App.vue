@@ -2,7 +2,7 @@
   <div class="container">
     <h1>Web Arpeggiator (Vue 3 + TS)</h1>
 
-    <ChannelsBar :channels="channels" :currentIndex="currentIndex" @select="selectChannel" @toggle="toggleChannelPlay" />
+    <ChannelsBar :channels="channels" :currentIndex="currentIndex" :syncActive="syncChannels" @select="selectChannel" @toggle="toggleChannelPlay" @toggle-sync="setSyncChannels(!syncChannels)" />
 
     <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
@@ -19,6 +19,8 @@ const {
   channels,
   currentIndex,
   currentChannel,
+  syncChannels,
+  setSyncChannels,
   selectChannel,
   toggleChannelPlay,
   togglePlay,

@@ -47,17 +47,66 @@ export function useChannels() {
   const currentIndex = ref(0)
   const currentChannel = computed(() => channels[currentIndex.value])
 
+  const syncChannels = ref(false)
+  function setSyncChannels(v:boolean){
+    // Toggle sync mode without changing any channel play states.
+    // When enabling, align all channel BPMs to master (channel 1, index 0) but do not start/stop any arpeggiators.
+    syncChannels.value = v
+    if (v) {
+      const master = channels[0]
+      channels.forEach(ch => {
+        ch.bpm = master.bpm
+        ch.ar.setBpm(master.bpm)
+      })
+    }
+  }
+
   function selectChannel(i:number){ currentIndex.value = i }
   function toggleChannelPlay(i:number){
     const ch = channels[i]
-    if (ch.playing) { ch.ar.stop(); ch.playing = false }
-    else { ch.ar.start(); ch.playing = true }
+    if (ch.playing) {
+      if (syncChannels.value) {
+        // stop all channels when any channel is stopped in sync mode
+        channels.forEach(c => { if (c.playing) { c.ar.stop(); c.playing = false } })
+      } else {
+        ch.ar.stop(); ch.playing = false
+      }
+    } else {
+      if (syncChannels.value) {
+        // start all channels, using master (channel 0) BPM as the clock source
+        const master = channels[0]
+        channels.forEach(c => {
+          c.bpm = master.bpm
+          c.ar.setBpm(master.bpm)
+          if (!c.playing) { c.ar.start(); c.playing = true }
+        })
+      } else {
+        ch.ar.start(); ch.playing = true
+      }
+    }
   }
 
   function togglePlay(){
     const ch = currentChannel.value
-    if (ch.playing) { ch.ar.stop(); ch.playing = false }
-    else { ch.ar.start(); ch.playing = true }
+    if (ch.playing) {
+      if (syncChannels.value) {
+        channels.forEach(c => { if (c.playing) { c.ar.stop(); c.playing = false } })
+      } else {
+        ch.ar.stop(); ch.playing = false
+      }
+    } else {
+      if (syncChannels.value) {
+        // make channel 0 the master and start all channels without changing master selection
+        const master = channels[0]
+        channels.forEach(c => {
+          c.bpm = master.bpm
+          c.ar.setBpm(master.bpm)
+          if (!c.playing) { c.ar.start(); c.playing = true }
+        })
+      } else {
+        ch.ar.start(); ch.playing = true
+      }
+    }
   }
 
   function toggleNote(n:number){
@@ -95,7 +144,13 @@ export function useChannels() {
 
   watch(selectedOutputId, (id) => { if (id) selectOutput(id) })
 
-  function updateBpm(v:number){ currentChannel.value.ar.setBpm(v); currentChannel.value.bpm = v }
+  function updateBpm(v:number){
+    if (syncChannels.value) {
+      channels.forEach(c => { c.bpm = v; c.ar.setBpm(v) })
+    } else {
+      currentChannel.value.ar.setBpm(v); currentChannel.value.bpm = v
+    }
+  }
   function updatePattern(v:any){ currentChannel.value.ar.setPattern(v); currentChannel.value.pattern = v }
   function updateNoteLength(v:number){ currentChannel.value.ar.setNoteLength(v); currentChannel.value.noteLength = v }
 
@@ -103,6 +158,8 @@ export function useChannels() {
     channels,
     currentIndex,
     currentChannel,
+    syncChannels,
+    setSyncChannels,
     selectChannel,
     toggleChannelPlay,
     togglePlay,
