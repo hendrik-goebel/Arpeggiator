@@ -1,6 +1,6 @@
 <template>
   <div class="channels">
-    <button class="sync-toggle" @click="$emit('toggle-sync')" :class="{active: props.syncActive}">Sync channel clocks</button>
+    <button class="sync-toggle" @click="$emit('toggle-sync')" :class="{active: syncActive}">Sync channel clocks</button>
     <div v-for="(ch, i) in channels" :key="ch.id" class="channel" :class="{selected: i === currentIndex}">
       <button @click="$emit('select', i)" class="ch-select" :style="{ background: ch.active ? ch.color : '' }">{{ ch.name }}</button>
       <button @click.stop="$emit('toggle', i)" :class="{playing: ch.playing}">{{ ch.playing ? 'Stop' : 'Start' }}</button>

@@ -4,6 +4,13 @@
 
     <ChannelsBar :channels="channels" :currentIndex="currentIndex" :syncActive="syncChannels" @select="selectChannel" @toggle="toggleChannelPlay" @toggle-sync="setSyncChannels(!syncChannels)" />
 
+    <div class="global-controls">
+      <label>Global Tempo (BPM):
+        <input type="number" :value="globalBpm" @input="(e)=> setGlobalBpm(+e.target.value)" :disabled="!syncChannels" min="20" max="300" />
+      </label>
+      <button @click="toggleGlobalPlay">{{ globalPlaying ? 'Stop All' : 'Start All' }}</button>
+    </div>
+
     <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
       @select-output="(id)=>{ selectedOutputId = id }" @update-bpm="updateBpm" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" />
@@ -21,6 +28,10 @@ const {
   currentChannel,
   syncChannels,
   setSyncChannels,
+  globalBpm,
+  globalPlaying,
+  setGlobalBpm,
+  toggleGlobalPlay,
   selectChannel,
   toggleChannelPlay,
   togglePlay,
