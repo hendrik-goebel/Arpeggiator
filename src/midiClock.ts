@@ -1,193 +1,150 @@
 export function createMidiClock(initialBpm: number, onTick: () => void) {
-  let bpm = initialBpm
-  let pendingBpm: number | null = null
-  let playing = false
-  let audioCtx: any = null
-  let schedulerTimer: any = null
-  let lastTickAt = 0
+  let beatsPerMinute = initialBpm
+  let pendingBeatsPerMinute: number | null = null
+  let isPlaying = false
+  let audioContext: any = null
+  let fallbackSchedulerTimer: any = null
+  let lastTickTimestamp = 0
 
   // Worklet/node state
-  let workletNode: any = null
-  let moduleLoading: Promise<void> | null = null
-  let workletLoaded = false
+  let audioWorkletNode: any = null
+  let moduleLoadingPromise: Promise<void> | null = null
+  let workletModuleLoaded = false
 
-  const getIntervalSec = () => 60 / bpm
-  const getIntervalMs = () => (60000 / bpm)
+  const getIntervalMs = () => (60000 / beatsPerMinute)
+  const nowMs = () => (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now()
 
   function tryCreateAudioContext() {
-    if (audioCtx) return true
-    const AC = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext
-    if (!AC) return false
+    if (audioContext) return true
+    const AudioContext = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext
+    if (!AudioContext) return false
     try {
-      audioCtx = new AC()
-      if (audioCtx.state === 'suspended' && typeof audioCtx.resume === 'function') {
-        // resume may require user gesture; attempt anyway
-        audioCtx.resume().catch(() => {})
-      }
+      audioContext = new AudioContext()
+      if (audioContext.state === 'suspended' && typeof audioContext.resume === 'function') audioContext.resume().catch(() => {})
       return true
     } catch (e) {
-      audioCtx = null
+      audioContext = null
       return false
     }
   }
 
-  // Load an external AudioWorklet module file instead of inlining
+  // Helper to safely post messages to the worklet
+  function postToWorklet(message: any) {
+    try { audioWorkletNode?.port?.postMessage(message) } catch (e) {}
+  }
+
+  // Load an external AudioWorklet module file using async/await
   function ensureWorkletModule() {
-    if (moduleLoading || workletLoaded) return
+    if (moduleLoadingPromise || workletModuleLoaded) return
     if (!tryCreateAudioContext()) return
 
-    try {
-      const moduleUrl = new URL('./midi-clock-processor.js', import.meta.url).toString()
-      moduleLoading = audioCtx.audioWorklet.addModule(moduleUrl).then(() => { workletLoaded = true }).catch(() => { workletLoaded = false })
-    } catch (e) {
-      moduleLoading = Promise.resolve()
-      workletLoaded = false
-    }
+    moduleLoadingPromise = (async () => {
+      try {
+        const moduleUrl = new URL('./midi-clock-processor.js', import.meta.url).toString()
+        await audioContext.audioWorklet.addModule(moduleUrl)
+        workletModuleLoaded = true
+      } catch (e) {
+        workletModuleLoaded = false
+      }
+    })()
   }
 
   function startWorklet(delayMs?: number) {
-    if (!audioCtx || !workletLoaded) return false
-    if (workletNode) return true
+    if (!audioContext || !workletModuleLoaded) return false
+    if (audioWorkletNode) return true
     try {
-      workletNode = new (globalThis as any).AudioWorkletNode(audioCtx, 'midi-clock-processor')
-      workletNode.port.onmessage = (e:any) => {
-        if (e && e.data && e.data.type === 'tick') {
-          lastTickAt = Date.now()
-          // apply pendingBpm after worklet emits tick? Worklet applies its own pending bpm
+      audioWorkletNode = new (globalThis as any).AudioWorkletNode(audioContext, 'midi-clock-processor')
+      audioWorkletNode.port.onmessage = (event:any) => {
+        if (event?.data?.type === 'tick') {
+          lastTickTimestamp = Date.now()
           onTick()
         }
       }
       // init
-      workletNode.port.postMessage({ type: 'init', sampleRate: audioCtx.sampleRate, bpm })
+      postToWorklet({ type: 'init', sampleRate: audioContext.sampleRate, bpm: beatsPerMinute })
       // start with optional delay
-      const startInSamples = (typeof delayMs === 'number') ? Math.max(0, Math.floor((delayMs/1000) * audioCtx.sampleRate)) : undefined
-      workletNode.port.postMessage({ type: 'start', bpm, startInSamples })
+      const startInSamples = (typeof delayMs === 'number') ? Math.max(0, Math.floor((delayMs/1000) * audioContext.sampleRate)) : undefined
+      postToWorklet({ type: 'start', bpm: beatsPerMinute, startInSamples })
       return true
     } catch (e) {
-      workletNode = null
+      audioWorkletNode = null
       return false
     }
   }
 
   // Fallback perf-based scheduler (drift-correcting)
-  let nextTickPerf = 0
+  let nextScheduledTickPerf = 0
   function scheduleLoopFallback() {
-    if (!playing) return
-    const now = (typeof performance !== 'undefined') ? performance.now() : Date.now()
-    if (!nextTickPerf) nextTickPerf = now
+    if (!isPlaying) return
+    const now = nowMs()
+    nextScheduledTickPerf ||= now
 
     let safety = 0
-    while (nextTickPerf <= now + 1 && safety < 1000) {
-      lastTickAt = Date.now()
+    while (nextScheduledTickPerf <= now + 1 && safety < 1000) {
+      lastTickTimestamp = Date.now()
       onTick()
-      if (pendingBpm != null) { bpm = pendingBpm; pendingBpm = null }
-      nextTickPerf += getIntervalMs()
+      if (pendingBeatsPerMinute != null) { beatsPerMinute = pendingBeatsPerMinute; pendingBeatsPerMinute = null }
+      nextScheduledTickPerf += getIntervalMs()
       safety++
     }
 
-    const msUntil = Math.max(nextTickPerf - ((typeof performance !== 'undefined') ? performance.now() : Date.now()) - 2, 0)
-    clearTimeout(schedulerTimer)
-    schedulerTimer = setTimeout(scheduleLoopFallback, msUntil)
+    const msUntil = Math.max(nextScheduledTickPerf - nowMs() - 2, 0)
+    clearTimeout(fallbackSchedulerTimer)
+    fallbackSchedulerTimer = setTimeout(scheduleLoopFallback, msUntil)
   }
 
-  function start() {
-    if (playing) return
-    playing = true
-    lastTickAt = 0
+  function startInternal(delayMs?: number) {
+    if (isPlaying) return
+    isPlaying = true
+    lastTickTimestamp = 0
 
-    // attempt to use AudioWorklet
+    // attempt to use AudioWorklet first
     ensureWorkletModule()
-    if (workletLoaded) {
-      if (startWorklet()) return
-    }
+    if (workletModuleLoaded && startWorklet(delayMs)) return
 
-    // if worklet not ready or failed, fallback to perf scheduler
-    nextTickPerf = (typeof performance !== 'undefined') ? performance.now() : Date.now()
+    // fallback to perf scheduler
+    nextScheduledTickPerf = nowMs() + (delayMs || 0)
     scheduleLoopFallback()
 
-    // if module is still loading, attempt to switch to worklet when ready
-    if (moduleLoading) {
-      moduleLoading.then(() => {
-        if (playing && workletLoaded) {
-          // stop fallback
-          clearTimeout(schedulerTimer)
-          schedulerTimer = null
-          nextTickPerf = 0
-          // start worklet without delay
-          startWorklet()
-        }
-      }).catch(() => {})
-    }
+    // when module finishes loading, switch to worklet if possible
+    moduleLoadingPromise?.then(() => {
+      if (!isPlaying || !workletModuleLoaded) return
+      clearTimeout(fallbackSchedulerTimer)
+      fallbackSchedulerTimer = null
+      nextScheduledTickPerf = 0
+      startWorklet(delayMs)
+    }).catch(() => {})
   }
 
-  function startAlignedTo(delayMs: number) {
-    if (playing) return
-    playing = true
-    lastTickAt = 0
-
-    ensureWorkletModule()
-    if (workletLoaded) {
-      if (startWorklet(delayMs)) return
-    }
-
-    // fallback
-    nextTickPerf = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) + delayMs
-    scheduleLoopFallback()
-
-    if (moduleLoading) {
-      moduleLoading.then(() => {
-        if (playing && workletLoaded) {
-          clearTimeout(schedulerTimer)
-          schedulerTimer = null
-          nextTickPerf = 0
-          startWorklet(delayMs)
-        }
-      }).catch(() => {})
-    }
-  }
+  function start() { startInternal() }
+  function startAlignedTo(delayMs: number) { startInternal(delayMs) }
 
   function stop() {
-    if (!playing) return
-    playing = false
-    if (schedulerTimer) {
-      clearTimeout(schedulerTimer)
-      schedulerTimer = null
-    }
+    if (!isPlaying) return
+    isPlaying = false
+    clearTimeout(fallbackSchedulerTimer)
+    fallbackSchedulerTimer = null
     // stop worklet if running
-    if (workletNode) {
-      try { workletNode.port.postMessage({ type: 'stop' }) } catch (e) {}
-      try { workletNode.disconnect(); workletNode = null } catch (e) { workletNode = null }
+    if (audioWorkletNode) {
+      postToWorklet({ type: 'stop' })
+      try { audioWorkletNode.disconnect(); audioWorkletNode = null } catch (e) { audioWorkletNode = null }
     }
   }
 
   function setBpm(v: number) {
-    if (playing) {
-      pendingBpm = v
-      // inform worklet if present
-      if (workletNode) {
-        try { workletNode.port.postMessage({ type: 'setBpm', bpm: v }) } catch (e) {}
-        // worklet will apply pending bpm after next tick
-      }
-    } else {
-      bpm = v
-    }
+    if (!isPlaying) { beatsPerMinute = v; return }
+    pendingBeatsPerMinute = v
+    postToWorklet({ type: 'setBpm', bpm: v })
   }
 
   function timeToNextTick() {
-    if (!playing) return 0
-    if (workletNode && audioCtx) {
-      // worklet maintains its own samplesUntilNext; best-effort: not exposed; return 0 to indicate unknown
-      return 0
-    }
-    if (nextTickPerf) {
-      const now = (typeof performance !== 'undefined') ? performance.now() : Date.now()
-      return Math.max(0, nextTickPerf - now)
-    }
-    return 0
+    if (!isPlaying) return 0
+    if (audioWorkletNode && audioContext) return 0
+    return Math.max(0, (nextScheduledTickPerf || 0) - nowMs())
   }
 
   function getState() {
-    return { bpm, lastTickAt }
+    return { bpm: beatsPerMinute, lastTickAt: lastTickTimestamp }
   }
 
   return { start, startAlignedTo, stop, setBpm, timeToNextTick, getState }
