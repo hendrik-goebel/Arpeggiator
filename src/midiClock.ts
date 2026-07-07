@@ -5,9 +5,11 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
   let audioCtx: any = null
   let schedulerTimer: any = null
   let lastTickAt = 0
-  let nextTickAudioTime = 0 // seconds (audioCtx.currentTime)
-  let nextTickPerf = 0 // ms (performance.now)
-  const SCHEDULE_AHEAD = 0.1 // seconds
+
+  // Worklet/node state
+  let workletNode: any = null
+  let moduleLoading: Promise<void> | null = null
+  let workletLoaded = false
 
   const getIntervalSec = () => 60 / bpm
   const getIntervalMs = () => (60000 / bpm)
@@ -29,42 +31,109 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
     }
   }
 
-  // Audio-synced scheduler: uses audioCtx.currentTime as stable clock and schedules ahead
-  function scheduleLoopAudio() {
-    if (!audioCtx || !playing) return
-    const now = audioCtx.currentTime
-    // initialize nextTickAudioTime if needed
-    if (!nextTickAudioTime) nextTickAudioTime = now
+  // Create and load an AudioWorklet processor from an inline string. Non-blocking.
+  function ensureWorkletModule() {
+    if (moduleLoading || workletLoaded) return
+    if (!tryCreateAudioContext()) return
 
-    // catch up ticks that fall within the schedule-ahead window
-    while (nextTickAudioTime <= now + SCHEDULE_AHEAD) {
-      // invoke tick callback
-      onTick()
-      lastTickAt = Date.now()
+    const processorCode = `
+      class MidiClockProcessor extends AudioWorkletProcessor {
+        constructor() {
+          super();
+          this.sampleRate = sampleRate; // available global in worklet
+          this.bpm = 120;
+          this.samplesPerTick = this.sampleRate * 60 / this.bpm;
+          this.samplesUntilNext = this.samplesPerTick;
+          this.running = false;
+          this.pendingBpm = null;
+          this.port.onmessage = (e) => {
+            const d = e.data;
+            if (d && d.type === 'init') {
+              this.sampleRate = d.sampleRate || this.sampleRate;
+            } else if (d && d.type === 'setBpm') {
+              this.pendingBpm = d.bpm;
+            } else if (d && d.type === 'start') {
+              this.running = true;
+              this.samplesPerTick = this.sampleRate * 60 / (d.bpm || this.bpm);
+              this.samplesUntilNext = (typeof d.startInSamples === 'number') ? d.startInSamples : this.samplesPerTick;
+              this.bpm = d.bpm || this.bpm;
+              this.pendingBpm = null;
+            } else if (d && d.type === 'stop') {
+              this.running = false;
+            }
+          };
+        }
 
-      // apply pending BPM changes after emitting tick
-      if (pendingBpm != null) { bpm = pendingBpm; pendingBpm = null }
+        process(inputs, outputs, parameters) {
+          const frames = outputs && outputs[0] && outputs[0][0] ? outputs[0][0].length : 128;
+          if (!this.running) return true;
+          let f = frames;
+          while (f-- > 0) {
+            this.samplesUntilNext -= 1;
+            if (this.samplesUntilNext <= 0) {
+              // emit a tick
+              this.port.postMessage({ type: 'tick' });
+              // apply pending bpm change after tick
+              if (this.pendingBpm != null) {
+                this.bpm = this.pendingBpm;
+                this.pendingBpm = null;
+              }
+              this.samplesPerTick = this.sampleRate * 60 / this.bpm;
+              this.samplesUntilNext += this.samplesPerTick;
+            }
+          }
+          return true;
+        }
+      }
+      registerProcessor('midi-clock-processor', MidiClockProcessor);
+    `
 
-      nextTickAudioTime += getIntervalSec()
-    }
-
-    // schedule next check shortly before the next tick (minus a small margin)
-    const msUntilNext = Math.max((nextTickAudioTime - audioCtx.currentTime) * 1000 - 5, 0)
-    clearTimeout(schedulerTimer)
-    schedulerTimer = setTimeout(scheduleLoopAudio, msUntilNext)
+    const blob = new Blob([processorCode], { type: 'application/javascript' })
+    const url = URL.createObjectURL(blob)
+    moduleLoading = audioCtx.audioWorklet.addModule(url).then(() => {
+      workletLoaded = true
+    }).catch(() => {
+      workletLoaded = false
+    }).finally(() => {
+      URL.revokeObjectURL(url)
+    })
   }
 
-  // High-resolution fallback scheduler using performance.now with drift correction
+  function startWorklet(delayMs?: number) {
+    if (!audioCtx || !workletLoaded) return false
+    if (workletNode) return true
+    try {
+      workletNode = new (globalThis as any).AudioWorkletNode(audioCtx, 'midi-clock-processor')
+      workletNode.port.onmessage = (e:any) => {
+        if (e && e.data && e.data.type === 'tick') {
+          lastTickAt = Date.now()
+          // apply pendingBpm after worklet emits tick? Worklet applies its own pending bpm
+          onTick()
+        }
+      }
+      // init
+      workletNode.port.postMessage({ type: 'init', sampleRate: audioCtx.sampleRate })
+      // start with optional delay
+      const startInSamples = (typeof delayMs === 'number') ? Math.max(0, Math.floor((delayMs/1000) * audioCtx.sampleRate)) : undefined
+      workletNode.port.postMessage({ type: 'start', bpm, startInSamples })
+      return true
+    } catch (e) {
+      workletNode = null
+      return false
+    }
+  }
+
+  // Fallback perf-based scheduler (drift-correcting)
+  let nextTickPerf = 0
   function scheduleLoopFallback() {
     if (!playing) return
     const now = (typeof performance !== 'undefined') ? performance.now() : Date.now()
     if (!nextTickPerf) nextTickPerf = now
 
-    // emit any ticks that should have happened by now
     let safety = 0
     while (nextTickPerf <= now + 1 && safety < 1000) {
-      onTick()
       lastTickAt = Date.now()
+      onTick()
       if (pendingBpm != null) { bpm = pendingBpm; pendingBpm = null }
       nextTickPerf += getIntervalMs()
       safety++
@@ -78,31 +147,56 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
   function start() {
     if (playing) return
     playing = true
-    // reset scheduling anchors
-    nextTickPerf = 0
-    nextTickAudioTime = 0
+    lastTickAt = 0
 
-    // prefer audio context when available
-    if (tryCreateAudioContext()) {
-      // align next tick to audio clock and start scheduler
-      nextTickAudioTime = audioCtx.currentTime
-      scheduleLoopAudio()
-    } else {
-      // fallback to perf-based scheduling
-      nextTickPerf = (typeof performance !== 'undefined') ? performance.now() : Date.now()
-      scheduleLoopFallback()
+    // attempt to use AudioWorklet
+    ensureWorkletModule()
+    if (workletLoaded) {
+      if (startWorklet()) return
+    }
+
+    // if worklet not ready or failed, fallback to perf scheduler
+    nextTickPerf = (typeof performance !== 'undefined') ? performance.now() : Date.now()
+    scheduleLoopFallback()
+
+    // if module is still loading, attempt to switch to worklet when ready
+    if (moduleLoading) {
+      moduleLoading.then(() => {
+        if (playing && workletLoaded) {
+          // stop fallback
+          clearTimeout(schedulerTimer)
+          schedulerTimer = null
+          nextTickPerf = 0
+          // start worklet without delay
+          startWorklet()
+        }
+      }).catch(() => {})
     }
   }
 
   function startAlignedTo(delayMs: number) {
     if (playing) return
     playing = true
-    if (tryCreateAudioContext()) {
-      nextTickAudioTime = audioCtx.currentTime + (delayMs / 1000)
-      scheduleLoopAudio()
-    } else {
-      nextTickPerf = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) + delayMs
-      scheduleLoopFallback()
+    lastTickAt = 0
+
+    ensureWorkletModule()
+    if (workletLoaded) {
+      if (startWorklet(delayMs)) return
+    }
+
+    // fallback
+    nextTickPerf = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) + delayMs
+    scheduleLoopFallback()
+
+    if (moduleLoading) {
+      moduleLoading.then(() => {
+        if (playing && workletLoaded) {
+          clearTimeout(schedulerTimer)
+          schedulerTimer = null
+          nextTickPerf = 0
+          startWorklet(delayMs)
+        }
+      }).catch(() => {})
     }
   }
 
@@ -113,13 +207,21 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
       clearTimeout(schedulerTimer)
       schedulerTimer = null
     }
-    // do not close audioCtx to avoid requiring user gesture to recreate later
+    // stop worklet if running
+    if (workletNode) {
+      try { workletNode.port.postMessage({ type: 'stop' }) } catch (e) {}
+      try { workletNode.disconnect(); workletNode = null } catch (e) { workletNode = null }
+    }
   }
 
   function setBpm(v: number) {
     if (playing) {
-      // apply after current tick
       pendingBpm = v
+      // inform worklet if present
+      if (workletNode) {
+        try { workletNode.port.postMessage({ type: 'setBpm', bpm: v }) } catch (e) {}
+        // worklet will apply pending bpm after next tick
+      }
     } else {
       bpm = v
     }
@@ -127,9 +229,9 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
 
   function timeToNextTick() {
     if (!playing) return 0
-    if (audioCtx && nextTickAudioTime) {
-      const ms = Math.max(0, (nextTickAudioTime - audioCtx.currentTime) * 1000)
-      return ms
+    if (workletNode && audioCtx) {
+      // worklet maintains its own samplesUntilNext; best-effort: not exposed; return 0 to indicate unknown
+      return 0
     }
     if (nextTickPerf) {
       const now = (typeof performance !== 'undefined') ? performance.now() : Date.now()
