@@ -58,7 +58,7 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
         }
       }
       // init
-      workletNode.port.postMessage({ type: 'init', sampleRate: audioCtx.sampleRate })
+      workletNode.port.postMessage({ type: 'init', sampleRate: audioCtx.sampleRate, bpm })
       // start with optional delay
       const startInSamples = (typeof delayMs === 'number') ? Math.max(0, Math.floor((delayMs/1000) * audioCtx.sampleRate)) : undefined
       workletNode.port.postMessage({ type: 'start', bpm, startInSamples })

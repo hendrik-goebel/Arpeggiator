@@ -12,6 +12,8 @@ class MidiClockProcessor extends AudioWorkletProcessor {
       const d = e.data;
       if (d && d.type === 'init') {
         this.sampleRate = d.sampleRate || this.sampleRate;
+        // allow main thread to provide default BPM from config
+        if (typeof d.bpm === 'number') this.bpm = d.bpm;
       } else if (d && d.type === 'setBpm') {
         this.pendingBpm = d.bpm;
       } else if (d && d.type === 'start') {
