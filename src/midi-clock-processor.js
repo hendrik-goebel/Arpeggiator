@@ -2,49 +2,55 @@ class MidiClockProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.sampleRate = sampleRate; // provided by the worklet global scope
-    this.bpm = 120;
-    this.samplesPerTick = this.sampleRate * 60 / this.bpm;
-    this.samplesUntilNext = this.samplesPerTick;
-    this.running = false;
-    this.pendingBpm = null;
+    this.beatsPerMinute = 120;
+    this.samplesPerClockTick = this.sampleRate * 60 / this.beatsPerMinute;
+    this.samplesRemainingUntilNextTick = this.samplesPerClockTick;
+    this.isRunning = false;
+    this.pendingBeatsPerMinute = null;
 
-    this.port.onmessage = (e) => {
-      const d = e.data;
-      if (d && d.type === 'init') {
-        this.sampleRate = d.sampleRate || this.sampleRate;
-        // allow main thread to provide default BPM from config
-        if (typeof d.bpm === 'number') this.bpm = d.bpm;
-      } else if (d && d.type === 'setBpm') {
-        this.pendingBpm = d.bpm;
-      } else if (d && d.type === 'start') {
-        this.running = true;
-        this.samplesPerTick = this.sampleRate * 60 / (d.bpm || this.bpm);
-        this.samplesUntilNext = (typeof d.startInSamples === 'number') ? d.startInSamples : this.samplesPerTick;
-        this.bpm = d.bpm || this.bpm;
-        this.pendingBpm = null;
-      } else if (d && d.type === 'stop') {
-        this.running = false;
+    this.port.onmessage = (event) => {
+      const data = event.data;
+      switch (data && data.type) {
+        case 'init':
+          this.sampleRate = data.sampleRate || this.sampleRate;
+          // allow main thread to provide default BPM from config
+          if (typeof data.bpm === 'number') this.beatsPerMinute = data.bpm;
+          break;
+        case 'setBpm':
+          this.pendingBeatsPerMinute = data.bpm;
+          break;
+        case 'start':
+          this.isRunning = true;
+          this.samplesPerClockTick = this.sampleRate * 60 / (data.bpm || this.beatsPerMinute);
+          this.samplesRemainingUntilNextTick = (typeof data.startInSamples === 'number') ? data.startInSamples : this.samplesPerClockTick;
+          this.beatsPerMinute = data.bpm || this.beatsPerMinute;
+          this.pendingBeatsPerMinute = null;
+          break;
+        case 'stop':
+          this.isRunning = false;
+          break;
+        default:
+          break;
       }
     };
   }
 
   process(inputs, outputs, parameters) {
-    const frames = (outputs && outputs[0] && outputs[0][0]) ? outputs[0][0].length : 128;
-    if (!this.running) return true;
-    let f = frames;
-    while (f-- > 0) {
-      this.samplesUntilNext -= 1;
-      if (this.samplesUntilNext <= 0) {
-        // emit a tick to main thread
-        this.port.postMessage({ type: 'tick' });
-        // apply pending bpm change after tick
-        if (this.pendingBpm != null) {
-          this.bpm = this.pendingBpm;
-          this.pendingBpm = null;
-        }
-        this.samplesPerTick = this.sampleRate * 60 / this.bpm;
-        this.samplesUntilNext += this.samplesPerTick;
+    const framesAvailable = (outputs && outputs[0] && outputs[0][0]) ? outputs[0][0].length : 128;
+    if (!this.isRunning) return true;
+    for (let frameIndex = 0; frameIndex < framesAvailable; frameIndex++) {
+      this.samplesRemainingUntilNextTick -= 1;
+      if (this.samplesRemainingUntilNextTick > 0) continue;
+
+      // emit a tick to main thread
+      this.port.postMessage({ type: 'tick' });
+      // apply pending beats-per-minute change after tick
+      if (this.pendingBeatsPerMinute != null) {
+        this.beatsPerMinute = this.pendingBeatsPerMinute;
+        this.pendingBeatsPerMinute = null;
       }
+      this.samplesPerClockTick = this.sampleRate * 60 / this.beatsPerMinute;
+      this.samplesRemainingUntilNextTick += this.samplesPerClockTick;
     }
     return true;
   }
