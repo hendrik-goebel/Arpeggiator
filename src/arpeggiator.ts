@@ -7,46 +7,44 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   let notes: number[] = []
   let pattern: Pattern = 'up'
   let noteLength = DEFAULT_NOTE_LENGTH
-  let index = 0
-  let stepIndex = 0
-  let direction = 1
+  let noteIndex = 0
+  let stepPointer = 0
+  let scanDirection = 1
   let steps: number[] = [] // indexes into notes[] or -1 for rest
+
+  const safeModulo = (n:number, m:number) => ((n % m) + m) % m
+
+  function advanceIndexForPattern() {
+    if (pattern === 'up') noteIndex = safeModulo(noteIndex + 1, notes.length)
+    else if (pattern === 'down') noteIndex = safeModulo(noteIndex - 1, notes.length)
+    else if (pattern === 'updown') {
+      if (notes.length <= 1) { noteIndex = 0; return }
+      if (scanDirection === 1 && noteIndex >= notes.length - 1) scanDirection = -1
+      else if (scanDirection === -1 && noteIndex <= 0) scanDirection = 1
+      noteIndex = Math.max(0, Math.min(notes.length - 1, noteIndex + scanDirection))
+    }
+  }
 
   function tick() {
     if (!notes.length) return
+
     let noteToPlay: number | undefined
-
-    if (pattern === 'random') {
-      noteToPlay = notes[Math.floor(Math.random() * notes.length)]
-    } else if (pattern === 'custom') {
-      if (!steps.length) return
-      const s = steps[stepIndex]
-      if (s != null && s >= 0 && s < notes.length) noteToPlay = notes[s]
-      stepIndex = (stepIndex + 1) % steps.length
-    } else {
-      // play current index, then advance for next tick
-      noteToPlay = notes[index]
-
-      if (pattern === 'up') {
-        index = (index + 1) % notes.length
-      } else if (pattern === 'down') {
-        index = (index - 1 + notes.length) % notes.length
-      } else if (pattern === 'updown') {
-        if (notes.length === 1) {
-          index = 0
-        } else {
-          if (direction === 1 && index >= notes.length - 1) direction = -1
-          else if (direction === -1 && index <= 0) direction = 1
-          index += direction
-          if (index < 0) index = 0
-          if (index >= notes.length) index = notes.length - 1
-        }
-      }
+    switch (pattern) {
+      case 'random':
+        noteToPlay = notes[Math.floor(Math.random() * notes.length)]
+        break
+      case 'custom':
+        if (!steps.length) return
+        const stepChoice = steps[stepPointer]
+        if (stepChoice != null && stepChoice >= 0 && stepChoice < notes.length) noteToPlay = notes[stepChoice]
+        stepPointer = (stepPointer + 1) % steps.length
+        break
+      default:
+        noteToPlay = notes[noteIndex]
+        advanceIndexForPattern()
     }
 
-    if (noteToPlay != null) {
-      sendNote(noteToPlay, 0x7f, noteLength)
-    }
+    if (noteToPlay != null) sendNote(noteToPlay, 0x7f, noteLength)
   }
 
   // use a dedicated MIDI clock for timing and BPM handling
@@ -54,48 +52,38 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
 
   function start(){
     if (!notes.length) return
-    stepIndex = 0
-    index = 0
+    stepPointer = 0
+    noteIndex = 0
     clock.start()
   }
 
   function startAlignedTo(other:any){
     if (!notes.length) return
-    // copy position state from other if available
-    try {
+
+    // copy position state from other if available (guarded)
+    if (other && typeof other.getState === 'function') {
       const s = other.getState()
-      index = s.index
-      stepIndex = s.stepIndex
-      direction = s.direction
-      pattern = s.pattern
-    } catch (e) {
-      // ignore if other doesn't expose state
+      noteIndex = s.index ?? noteIndex
+      stepPointer = s.stepIndex ?? stepPointer
+      scanDirection = s.direction ?? scanDirection
+      pattern = s.pattern ?? pattern
     }
 
-    const delay = (typeof other.timeToNextTick === 'function') ? other.timeToNextTick() : 0
-    // delegate alignment scheduling to clock
+    const delay = (other && typeof other.timeToNextTick === 'function') ? other.timeToNextTick() : 0
     clock.startAlignedTo(delay)
   }
 
-  function timeToNextTick(){
-    return clock.timeToNextTick()
-  }
+  function timeToNextTick(){ return clock.timeToNextTick() }
 
-  function getState(){
-    return { index, stepIndex, direction, pattern }
-  }
+  function getState(){ return { index: noteIndex, stepIndex: stepPointer, direction: scanDirection, pattern } }
 
-  function stop(){
-    clock.stop()
-  }
+  function stop(){ clock.stop() }
 
-  function setBpm(v:number){
-    clock.setBpm(v)
-  }
+  function setBpm(v:number){ clock.setBpm(v) }
   function setPattern(p:Pattern){ pattern = p }
-  function setNotes(n:number[]){ notes = n; index = 0; direction = 1 }
+  function setNotes(n:number[]){ notes = n; noteIndex = 0; scanDirection = 1 }
   function setNoteLength(ms:number){ noteLength = ms }
-  function setSteps(s:number[]){ steps = s; stepIndex = 0 }
+  function setSteps(s:number[]){ steps = s; stepPointer = 0 }
 
   return { start, startAlignedTo, stop, setBpm, setPattern, setNotes, setNoteLength, setSteps, getState, timeToNextTick }
 }
