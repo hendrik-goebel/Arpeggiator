@@ -8,7 +8,6 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
 
   // Worklet/node state
   let audioWorkletNode: any = null
-  let moduleLoadingPromise: Promise<void> | null = null
   let workletModuleLoaded = false
 
   const getIntervalMs = () => (60000 / beatsPerMinute)
