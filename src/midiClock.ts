@@ -33,20 +33,26 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
     try { audioWorkletNode?.port?.postMessage(message) } catch (e) {}
   }
 
-  // Load an external AudioWorklet module file using async/await
-  function ensureWorkletModule() {
-    if (moduleLoadingPromise || workletModuleLoaded) return
-    if (!tryCreateAudioContext()) return
+  // Load an external AudioWorklet module file; returns a Promise<boolean> indicating success
+  let moduleLoadingPromise: Promise<boolean> | null = null
+  async function ensureWorkletModule(): Promise<boolean> {
+    if (workletModuleLoaded) return true
+    if (moduleLoadingPromise) return moduleLoadingPromise
+    if (!tryCreateAudioContext()) return false
 
     moduleLoadingPromise = (async () => {
       try {
         const moduleUrl = new URL('./midi-clock-processor.js', import.meta.url).toString()
         await audioContext.audioWorklet.addModule(moduleUrl)
         workletModuleLoaded = true
+        return true
       } catch (e) {
         workletModuleLoaded = false
+        return false
       }
     })()
+
+    return moduleLoadingPromise
   }
 
   function startWorklet(delayMs?: number) {
@@ -93,22 +99,22 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
     fallbackSchedulerTimer = setTimeout(scheduleLoopFallback, msUntil)
   }
 
-  function startInternal(delayMs?: number) {
+  async function startInternal(delayMs?: number) {
     if (isPlaying) return
     isPlaying = true
     lastTickTimestamp = 0
 
     // attempt to use AudioWorklet first
-    ensureWorkletModule()
-    if (workletModuleLoaded && startWorklet(delayMs)) return
+    const workletReady = await ensureWorkletModule()
+    if (workletReady && startWorklet(delayMs)) return
 
     // fallback to perf scheduler
     nextScheduledTickPerf = nowMs() + (delayMs || 0)
     scheduleLoopFallback()
 
     // when module finishes loading, switch to worklet if possible
-    moduleLoadingPromise?.then(() => {
-      if (!isPlaying || !workletModuleLoaded) return
+    moduleLoadingPromise?.then((ready) => {
+      if (!isPlaying || !ready) return
       clearTimeout(fallbackSchedulerTimer)
       fallbackSchedulerTimer = null
       nextScheduledTickPerf = 0
@@ -116,8 +122,8 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
     }).catch(() => {})
   }
 
-  function start() { startInternal() }
-  function startAlignedTo(delayMs: number) { startInternal(delayMs) }
+  function start() { void startInternal() }
+  function startAlignedTo(delayMs: number) { void startInternal(delayMs) }
 
   function stop() {
     if (!isPlaying) return
