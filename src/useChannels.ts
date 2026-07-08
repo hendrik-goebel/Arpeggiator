@@ -161,7 +161,11 @@ export function useChannels() {
     if (!channel.steps) channel.steps = []
     if (channel.steps.length < newLen) channel.steps = channel.steps.concat(Array.from({ length: newLen - channel.steps.length }, () => -1))
     else if (channel.steps.length > newLen) channel.steps = channel.steps.slice(0, newLen)
-    if (typeof channel.arpeggiator.setLoopLength === 'function') channel.arpeggiator.setLoopLength(newLen)
+    if (typeof channel.arpeggiator.setLoopLength === 'function') {
+      channel.arpeggiator.setLoopLength(newLen)
+      // ensure arpeggiator uses the resized steps array
+      if (typeof channel.arpeggiator.setSteps === 'function') channel.arpeggiator.setSteps(channel.steps)
+    }
   }
 
   return {
