@@ -9,7 +9,6 @@
           <option value="down">Down</option>
           <option value="updown">UpDown</option>
           <option value="random">Random</option>
-          <option value="custom">Custom</option>
         </select>
       </label>
       <label>Note length (ms): <input type="number" :value="channel.noteLength" @input="$emit('update-noteLength', +$event.target.value)" min="50" max="2000" /></label>
@@ -22,8 +21,6 @@
       </label>
     </div>
 
-    <StepEditor v-if="channel.pattern === 'custom'" :steps="channel.steps" :notes="channel.notes" @cycle="$emit('cycle-step', $event)" />
-
     <Keyboard :notes="channel.notes" :base="channel.base" @toggle="$emit('toggle-note', $event)" />
 
     <LogPanel :lines="log" />
@@ -32,7 +29,6 @@
 
 <script setup lang="ts">
 import Keyboard from './Keyboard.vue'
-import StepEditor from './StepEditor.vue'
 import LogPanel from './LogPanel.vue'
 const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
 </script>

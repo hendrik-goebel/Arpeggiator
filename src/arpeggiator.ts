@@ -1,7 +1,7 @@
 import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH } from './config'
 import { createMidiClock } from './midiClock'
 
-export type Pattern = 'up'|'down'|'updown'|'random'|'custom'
+export type Pattern = 'up'|'down'|'updown'|'random'
 
 export function createArpeggiator(sendNote: (note:number, vel:number, len:number)=>void) {
   let notes: number[] = []
@@ -32,12 +32,6 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
     switch (pattern) {
       case 'random':
         noteToPlay = notes[Math.floor(Math.random() * notes.length)]
-        break
-      case 'custom':
-        if (!steps.length) return
-        const stepChoice = steps[stepPointer]
-        if (stepChoice != null && stepChoice >= 0 && stepChoice < notes.length) noteToPlay = notes[stepChoice]
-        stepPointer = (stepPointer + 1) % steps.length
         break
       default:
         noteToPlay = notes[noteIndex]
