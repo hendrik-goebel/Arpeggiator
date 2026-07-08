@@ -35,8 +35,8 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   }
 
   function ensureClock() {
-    // compute subdivision from loopLength (ticks per beat = loopLength / 4)
-    const subdivision = Math.max(1, Math.floor(loopLength / 4))
+    // Use fixed 16th-note resolution: 4 ticks per beat (so tempo doesn't change with loop length)
+    const subdivision = 4
     // recreate clock with new subdivision
     if (clock && typeof clock.stop === 'function') clock.stop()
     clock = createMidiClock(DEFAULT_BPM, tick, subdivision)
