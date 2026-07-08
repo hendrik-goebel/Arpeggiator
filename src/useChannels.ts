@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import { initMidi, listOutputs, selectOutput } from './midi'
+import { initMidi, listOutputs, selectOutput } from './midi/midi'
 import { createChannel } from './models/channel'
 import { CHANNEL_COUNT, DEFAULT_BPM } from './config'
 

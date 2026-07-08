@@ -41,7 +41,7 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
 
     moduleLoadingPromise = (async () => {
       try {
-        const moduleUrl = new URL('./midi-clock-processor.js', import.meta.url).toString()
+        const moduleUrl = new URL('./midi/midi-clock-processor.js', import.meta.url).toString()
         await audioContext.audioWorklet.addModule(moduleUrl)
         workletModuleLoaded = true
         return true

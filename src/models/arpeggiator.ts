@@ -1,5 +1,6 @@
 import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH } from '../config'
 import { createMidiClock } from './midiClock'
+import { MIDI } from '../midi/constants'
 
 export type Pattern = 'up'|'down'|'updown'|'random'
 
@@ -15,9 +16,14 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   const safeModulo = (n:number, m:number) => ((n % m) + m) % m
 
   function advanceIndexForPattern() {
-    if (pattern === 'up') noteIndex = safeModulo(noteIndex + 1, notes.length)
-    else if (pattern === 'down') noteIndex = safeModulo(noteIndex - 1, notes.length)
-    else if (pattern === 'updown') {
+    if (!notes.length) return
+    if (pattern === 'random') {
+      noteIndex = Math.floor(Math.random() * notes.length)
+    } else if (pattern === 'up') {
+      noteIndex = safeModulo(noteIndex + 1, notes.length)
+    } else if (pattern === 'down') {
+      noteIndex = safeModulo(noteIndex - 1, notes.length)
+    } else if (pattern === 'updown') {
       if (notes.length <= 1) { noteIndex = 0; return }
       if (scanDirection === 1 && noteIndex >= notes.length - 1) scanDirection = -1
       else if (scanDirection === -1 && noteIndex <= 0) scanDirection = 1
@@ -29,16 +35,10 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
     if (!notes.length) return
 
     let noteToPlay: number | undefined
-    switch (pattern) {
-      case 'random':
-        noteToPlay = notes[Math.floor(Math.random() * notes.length)]
-        break
-      default:
-        noteToPlay = notes[noteIndex]
-        advanceIndexForPattern()
-    }
+    noteToPlay = notes[noteIndex]
+    advanceIndexForPattern()
 
-    if (noteToPlay != null) sendNote(noteToPlay, 0x7f, noteLength)
+    if (noteToPlay != null) sendNote(noteToPlay, MIDI.VELOCITY_MAX, noteLength)
   }
 
   // use a dedicated MIDI clock for timing and BPM handling
@@ -47,7 +47,7 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   function start(){
     if (!notes.length) return
     stepPointer = 0
-    noteIndex = 0
+    noteIndex = (pattern === 'random' && notes.length) ? Math.floor(Math.random() * notes.length) : 0
     clock.start()
   }
 
@@ -75,7 +75,7 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
 
   function setBpm(v:number){ clock.setBpm(v) }
   function setPattern(p:Pattern){ pattern = p }
-  function setNotes(n:number[]){ notes = n; noteIndex = 0; scanDirection = 1 }
+  function setNotes(n:number[]){ notes = n; noteIndex = (pattern === 'random' && n.length) ? Math.floor(Math.random() * n.length) : 0; scanDirection = 1 }
   function setNoteLength(ms:number){ noteLength = ms }
   function setSteps(s:number[]){ steps = s; stepPointer = 0 }
 

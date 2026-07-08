@@ -1,5 +1,12 @@
+import { MIDI } from './constants'
+
 let midiAccess: WebMidi.MIDIAccess | null = null
 let selectedOutput: WebMidi.MIDIOutput | null = null
+
+function clampMidiValue(value: number) {
+  const n = Math.floor(Number(value) || 0)
+  return Math.max(0, Math.min(127, n))
+}
 
 export async function initMidi() {
   if (navigator && (navigator as any).requestMIDIAccess) {
@@ -27,12 +34,16 @@ export function sendNote(outputId:string, note:number, velocity:number, lengthMs
   if (!midiAccess) return
   const out = midiAccess.outputs.get(outputId)
   if (!out) return
-  out.send([0x90, note & 0x7f, velocity & 0x7f])
-  setTimeout(()=> out.send([0x80, note & 0x7f, 0x40]), lengthMs)
+  const safeNote = clampMidiValue(note)
+  const safeVelocity = clampMidiValue(velocity)
+  out.send([MIDI.NOTE_ON, safeNote, safeVelocity])
+  setTimeout(()=> out.send([MIDI.NOTE_OFF, safeNote, MIDI.DEFAULT_OFF_VELOCITY]), lengthMs)
 }
 
 export function sendRaw(note:number, velocity:number, lengthMs:number) {
   if (!selectedOutput) return
-  selectedOutput.send([0x90, note & 0x7f, velocity & 0x7f])
-  setTimeout(()=> selectedOutput && selectedOutput.send([0x80, note & 0x7f, 0x40]), lengthMs)
+  const safeNote = clampMidiValue(note)
+  const safeVelocity = clampMidiValue(velocity)
+  selectedOutput.send([MIDI.NOTE_ON, safeNote, safeVelocity])
+  setTimeout(()=> selectedOutput && selectedOutput.send([MIDI.NOTE_OFF, safeNote, MIDI.DEFAULT_OFF_VELOCITY]), lengthMs)
 }

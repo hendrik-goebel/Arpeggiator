@@ -1,6 +1,6 @@
 import { reactive, Ref } from 'vue'
 import { createArpeggiator, Pattern } from './arpeggiator'
-import { sendNote } from '../midi'
+import { sendNote } from '../midi/midi'
 import { DEFAULT_NOTES, DEFAULT_STEPS, DEFAULT_BASE, DEFAULT_BPM, DEFAULT_NOTE_LENGTH } from '../config'
 
 export interface Channel {
