@@ -190,6 +190,7 @@ export function useChannels() {
     log,
     updateBpm,
     updatePattern,
-    updateNoteLength
+    updateNoteLength,
+    updateLoopLength
   }
 }
