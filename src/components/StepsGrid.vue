@@ -2,7 +2,7 @@
   <div class="steps-grid">
     <div class="row header">
       <div class="note-col header-cell"></div>
-    <div v-for="i in STEP_COUNT" :key="i-1" class="step-col header-cell" :class="{playing: props.playStep === i-1}">{{ i }}</div>
+    <div v-for="i in stepCountArray" :key="i-1" class="step-col header-cell" :class="{playing: props.playStep === (i-1)}">{{ i }}</div>
     </div>
 
     <div v-for="(note, noteIndex) in notes" :key="note" class="row">
@@ -18,11 +18,14 @@
 import { computed } from 'vue'
 import { STEP_COUNT, NOTE_NAMES, OCTAVE_OFFSET, DEFAULT_BASE } from '../config'
 
-const props = defineProps<{ notes: number[], steps: number[] | undefined, base?: number, playStep?: number }>()
+const props = defineProps<{ notes: number[], steps: number[] | undefined, base?: number, playStep?: number, stepCount?: number }>()
 
 const base = props.base ?? DEFAULT_BASE
 
-const stepCountArray = computed(() => Array.from({ length: STEP_COUNT }, (_, i) => i + 1))
+const stepCountArray = computed(() => {
+  const cnt = (props.stepCount && props.stepCount > 0) ? props.stepCount : STEP_COUNT
+  return Array.from({ length: cnt }, (_, i) => i + 1)
+})
 
 function noteName(n:number){
   const octave = Math.floor(n / 12) + OCTAVE_OFFSET

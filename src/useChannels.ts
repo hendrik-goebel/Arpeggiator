@@ -153,6 +153,16 @@ export function useChannels() {
   }
   function updatePattern(pattern:any){ currentChannel.value.arpeggiator.setPattern(pattern); currentChannel.value.pattern = pattern }
   function updateNoteLength(length:number){ currentChannel.value.arpeggiator.setNoteLength(length); currentChannel.value.noteLength = length }
+  function updateLoopLength(length:number){
+    const channel = currentChannel.value
+    const newLen = Math.max(1, Math.min(32, Math.floor(length)))
+    channel.loopLength = newLen
+    // adjust steps array length
+    if (!channel.steps) channel.steps = []
+    if (channel.steps.length < newLen) channel.steps = channel.steps.concat(Array.from({ length: newLen - channel.steps.length }, () => -1))
+    else if (channel.steps.length > newLen) channel.steps = channel.steps.slice(0, newLen)
+    if (typeof channel.arpeggiator.setLoopLength === 'function') channel.arpeggiator.setLoopLength(newLen)
+  }
 
   return {
     channels,

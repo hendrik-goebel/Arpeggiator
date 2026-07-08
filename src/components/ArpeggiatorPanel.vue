@@ -12,6 +12,9 @@
         </select>
       </label>
       <label>Note length (ms): <input type="number" :value="channel.noteLength" @input="$emit('update-noteLength', +$event.target.value)" min="50" max="2000" /></label>
+      <label>Loop length:
+        <input type="number" :value="channel.loopLength" @input="$emit('update-loop-length', +$event.target.value)" min="1" max="32" />
+      </label>
       <button @click="$emit('toggle-play')">{{ channel.playing ? 'Stop' : 'Play' }}</button>
       <button @click="$emit('enable-midi')">Enable MIDI</button>
       <button @click="$emit('clear-notes')">Clear All</button>

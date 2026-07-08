@@ -11,7 +11,10 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   let noteIndex = 0
   let stepPointer = 0
   let scanDirection = 1
-  let steps: number[] = [] // indexes into notes[] or -1 for rest
+  let steps: number[] = [] // MIDI note numbers or -1 for rest
+  let loopLength = STEP_COUNT
+  let clock: any = null
+  let isPlaying = false
 
   const safeModulo = (n:number, m:number) => ((n % m) + m) % m
 
@@ -31,38 +34,90 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
     }
   }
 
+  function ensureClock() {
+    // compute subdivision from loopLength (ticks per beat = loopLength / 4)
+    const subdivision = Math.max(1, Math.floor(loopLength / 4))
+    // recreate clock with new subdivision
+    if (clock && typeof clock.stop === 'function') clock.stop()
+    clock = createMidiClock(DEFAULT_BPM, tick, subdivision)
+    if (isPlaying && clock && typeof clock.start === 'function') clock.start()
+  }
+
+  function setLoopLength(n:number){
+    loopLength = Math.max(1, Math.min(32, Math.floor(n)))
+    // resize steps array to match loopLength
+    if (!steps) steps = []
+    if (steps.length < loopLength) {
+      steps = steps.concat(Array.from({ length: loopLength - steps.length }, () => -1))
+    } else if (steps.length > loopLength) {
+      steps = steps.slice(0, loopLength)
+    }
+    stepPointer = stepPointer % Math.max(1, loopLength)
+    ensureClock()
+  }
+
   function tick() {
-    // Tick is called at a subdivision of the beat (configured in midiClock).
-    // Use steps[] mapping to decide whether to play a note on this 16th.
-    if (!steps || steps.length === 0) { stepPointer = (stepPointer + 1) % Math.max(1, STEP_COUNT); advanceIndexForPattern(); return }
+    if (!steps || steps.length === 0) { stepPointer = (stepPointer + 1) % Math.max(1, loopLength); advanceIndexForPattern(); return }
 
     const stepCount = Math.max(1, steps.length)
     const currentStep = stepPointer % stepCount
     const stepValue = steps[currentStep]
 
-    if (typeof stepValue === 'number' && stepValue >= 0) {
-      // stepValue is a MIDI note number
+    if (Array.isArray(stepValue)) {
+      // chord: play all notes
+      stepValue.forEach((n:any)=>{ if (typeof n === 'number' && n >= 0) sendNote(n, MIDI.VELOCITY_MAX, noteLength) })
+    } else if (typeof stepValue === 'number' && stepValue >= 0) {
+      // single MIDI note
       sendNote(stepValue, MIDI.VELOCITY_MAX, noteLength)
     }
 
     // advance pointers
-    stepPointer = (stepPointer + 1) % Math.max(1, STEP_COUNT)
+    stepPointer = (stepPointer + 1) % Math.max(1, loopLength)
 
-    // also advance pattern index for pattern-based arpeggios
+    // also advance pattern index for pattern-based arpeggios (keeps legacy behavior usable)
     advanceIndexForPattern()
   }
 
-  // use a dedicated MIDI clock for timing and BPM handling
-  // compute subdivision: how many ticks per beat (STEP_COUNT / 4, since 4 beats per bar)
-  const subdivision = Math.max(1, Math.floor(STEP_COUNT / 4))
-  const clock = createMidiClock(DEFAULT_BPM, tick, subdivision)
+  // initialize clock
+  ensureClock()
 
   function start(){
     if (!notes.length) return
     stepPointer = 0
     noteIndex = (pattern === 'random' && notes.length) ? Math.floor(Math.random() * notes.length) : 0
-    clock.start()
+    if (clock && typeof clock.start === 'function') { clock.start(); isPlaying = true }
   }
+
+  function startAlignedTo(other:any){
+    if (!notes.length) return
+
+    if (other && typeof other.getState === 'function') {
+      const s = other.getState()
+      noteIndex = s.index ?? noteIndex
+      stepPointer = s.stepIndex ?? stepPointer
+      scanDirection = s.direction ?? scanDirection
+      pattern = s.pattern ?? pattern
+    }
+
+    const delay = (other && typeof other.timeToNextTick === 'function') ? other.timeToNextTick() : 0
+    if (clock && typeof clock.startAlignedTo === 'function') clock.startAlignedTo(delay)
+    if (clock && typeof clock.start === 'function' && delay === 0) { clock.start(); isPlaying = true }
+  }
+
+  function timeToNextTick(){ return clock ? clock.timeToNextTick() : 0 }
+
+  function getState(){ return { index: noteIndex, stepIndex: stepPointer, direction: scanDirection, pattern } }
+
+  function stop(){ if (clock && typeof clock.stop === 'function') { clock.stop(); isPlaying = false } }
+
+  function setBpm(v:number){ if (clock && typeof clock.setBpm === 'function') clock.setBpm(v) }
+  function setPattern(p:Pattern){ pattern = p }
+  function setNotes(n:number[]){ notes = n; noteIndex = (pattern === 'random' && n.length) ? Math.floor(Math.random() * n.length) : 0; scanDirection = 1 }
+  function setNoteLength(ms:number){ noteLength = ms }
+  function setSteps(s:number[]){ steps = s; stepPointer = 0 }
+
+  return { start, startAlignedTo, stop, setBpm, setPattern, setNotes, setNoteLength, setSteps, getState, timeToNextTick, setLoopLength }
+}
 
   function startAlignedTo(other:any){
     if (!notes.length) return

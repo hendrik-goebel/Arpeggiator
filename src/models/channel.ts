@@ -30,6 +30,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     notes: DEFAULT_NOTES.slice() as number[],
     steps: DEFAULT_STEPS.slice() as number[],
     base: DEFAULT_BASE,
+    loopLength: DEFAULT_STEPS.length,
     arpeggiator: null as any,
     color: palette[index % palette.length],
     active: false
