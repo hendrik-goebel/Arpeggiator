@@ -1,4 +1,4 @@
-import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH } from '../config'
+import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH, STEP_COUNT } from '../config'
 import { createMidiClock } from './midiClock'
 import { MIDI } from '../midi/constants'
 
@@ -32,17 +32,30 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   }
 
   function tick() {
+    // Tick is called at a subdivision of the beat (configured in midiClock).
+    // Use steps[] mapping to decide whether to play a note on this 16th.
     if (!notes.length) return
 
-    let noteToPlay: number | undefined
-    noteToPlay = notes[noteIndex]
-    advanceIndexForPattern()
+    const stepCount = Math.max(1, steps.length)
+    const currentStep = stepPointer % stepCount
+    const stepValue = steps[currentStep]
 
-    if (noteToPlay != null) sendNote(noteToPlay, MIDI.VELOCITY_MAX, noteLength)
+    if (typeof stepValue === 'number' && stepValue >= 0 && stepValue < notes.length) {
+      const noteToPlay = notes[stepValue]
+      if (noteToPlay != null) sendNote(noteToPlay, MIDI.VELOCITY_MAX, noteLength)
+    }
+
+    // advance pointers
+    stepPointer = (stepPointer + 1) % Math.max(1, STEP_COUNT)
+
+    // also advance pattern index so pattern state remains sensible when steps target pattern index
+    advanceIndexForPattern()
   }
 
   // use a dedicated MIDI clock for timing and BPM handling
-  const clock = createMidiClock(DEFAULT_BPM, tick)
+  // compute subdivision: how many ticks per beat (STEP_COUNT / 4, since 4 beats per bar)
+  const subdivision = Math.max(1, Math.floor(STEP_COUNT / 4))
+  const clock = createMidiClock(DEFAULT_BPM, tick, subdivision)
 
   function start(){
     if (!notes.length) return

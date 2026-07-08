@@ -1,4 +1,5 @@
-export function createMidiClock(initialBpm: number, onTick: () => void) {
+export function createMidiClock(initialBpm: number, onTick: () => void, subdivision = 1) {
+  // subdivision: how many ticks per beat (e.g., 4 for 16th-note resolution when 4 ticks per beat)
   let beatsPerMinute = initialBpm
   let pendingBeatsPerMinute: number | null = null
   let isPlaying = false
@@ -10,7 +11,7 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
   let audioWorkletNode: any = null
   let workletModuleLoaded = false
 
-  const getIntervalMs = () => (60000 / beatsPerMinute)
+  const getIntervalMs = () => (60000 / (beatsPerMinute * subdivision))
   const nowMs = () => (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now()
 
   function tryCreateAudioContext() {
@@ -66,10 +67,10 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
         }
       }
       // init
-      postToWorklet({ type: 'init', sampleRate: audioContext.sampleRate, bpm: beatsPerMinute })
+      postToWorklet({ type: 'init', sampleRate: audioContext.sampleRate, bpm: beatsPerMinute * subdivision })
       // start with optional delay
       const startInSamples = (typeof delayMs === 'number') ? Math.max(0, Math.floor((delayMs/1000) * audioContext.sampleRate)) : undefined
-      postToWorklet({ type: 'start', bpm: beatsPerMinute, startInSamples })
+      postToWorklet({ type: 'start', bpm: beatsPerMinute * subdivision, startInSamples })
       return true
     } catch (e) {
       audioWorkletNode = null
@@ -139,7 +140,7 @@ export function createMidiClock(initialBpm: number, onTick: () => void) {
   function setBpm(v: number) {
     if (!isPlaying) { beatsPerMinute = v; return }
     pendingBeatsPerMinute = v
-    postToWorklet({ type: 'setBpm', bpm: v })
+    postToWorklet({ type: 'setBpm', bpm: v * subdivision })
   }
 
   function timeToNextTick() {
