@@ -21,14 +21,14 @@
       </label>
     </div>
 
-    <Keyboard :notes="channel.notes" :base="channel.base" @toggle="$emit('toggle-note', $event)" />
+    <StepsGrid :notes="channel.notes" :steps="channel.steps" :base="channel.base" @toggle-note="$emit('toggle-note', $event)" @cycle-step="$emit('cycle-step', $event)" />
 
     <LogPanel :lines="log" />
   </div>
 </template>
 
 <script setup lang="ts">
-import Keyboard from './Keyboard.vue'
+import StepsGrid from './StepsGrid.vue'
 import LogPanel from './LogPanel.vue'
 const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
 </script>
