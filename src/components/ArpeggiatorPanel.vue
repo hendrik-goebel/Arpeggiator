@@ -21,17 +21,22 @@
       </label>
     </div>
 
-    <StepsGrid :notes="channel.notes" :steps="channel.steps" :base="channel.base" :play-step="playStep" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
+    <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :play-step="playStep" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
 
     <LogPanel :lines="log" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import StepsGrid from './StepsGrid.vue'
 import LogPanel from './LogPanel.vue'
+import { DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE } from '../config'
 const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
+
+const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
+const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
+
 const playStep = ref<number | null>(null)
 let pollTimer: any = null
 
