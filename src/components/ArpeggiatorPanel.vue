@@ -14,6 +14,7 @@
       <label>Note length (ms): <input type="number" :value="channel.noteLength" @input="$emit('update-noteLength', +$event.target.value)" min="50" max="2000" /></label>
       <button @click="$emit('toggle-play')">{{ channel.playing ? 'Stop' : 'Play' }}</button>
       <button @click="$emit('enable-midi')">Enable MIDI</button>
+      <button @click="$emit('clear-notes')">Clear All</button>
       <label>Output:
         <select :value="selectedOutputId" @change="$emit('select-output', $event.target.value)">
           <option v-for="o in outputs" :key="o.id" :value="o.id">{{ o.name }}</option>

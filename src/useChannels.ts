@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { initMidi, listOutputs, selectOutput } from './midi/midi'
 import { createChannel } from './models/channel'
-import { CHANNEL_COUNT, DEFAULT_BPM } from './config'
+import { CHANNEL_COUNT, DEFAULT_BPM, STEP_COUNT } from './config'
 
 export function useChannels() {
   const log = ref<string[]>([])
@@ -123,6 +123,14 @@ export function useChannels() {
     if (newSteps[step] === note) newSteps[step] = -1
     else newSteps[step] = note
     channel.steps = newSteps
+    channel.arpeggiator.setSteps(channel.steps)
+  }
+
+  function clearNotes(){
+    const channel = currentChannel.value
+    channel.notes = []
+    channel.steps = Array.from({ length: STEP_COUNT }, () => -1)
+    channel.arpeggiator.setNotes(channel.notes)
     channel.arpeggiator.setSteps(channel.steps)
   }
 
