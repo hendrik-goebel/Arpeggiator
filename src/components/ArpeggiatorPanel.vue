@@ -21,16 +21,38 @@
       </label>
     </div>
 
-    <StepsGrid :notes="channel.notes" :steps="channel.steps" :base="channel.base" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
+    <StepsGrid :notes="channel.notes" :steps="channel.steps" :base="channel.base" :play-step="playStep" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
 
     <LogPanel :lines="log" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import StepsGrid from './StepsGrid.vue'
 import LogPanel from './LogPanel.vue'
 const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
+const playStep = ref<number | null>(null)
+let pollTimer: any = null
+
+function pollOnce(){
+  try {
+    const ar = props.channel?.arpeggiator
+    if (ar && typeof ar.getState === 'function') {
+      const s = ar.getState()
+      playStep.value = (s && typeof s.stepIndex === 'number') ? s.stepIndex : null
+    } else {
+      playStep.value = null
+    }
+  } catch (e) { playStep.value = null }
+}
+
+function startPolling(){ stopPolling(); pollOnce(); pollTimer = setInterval(pollOnce, 40) }
+function stopPolling(){ if (pollTimer) { clearInterval(pollTimer); pollTimer = null } }
+
+onMounted(() => startPolling())
+onUnmounted(() => stopPolling())
+watch(() => props.channel, () => startPolling())
 </script>
 
 <style scoped>
