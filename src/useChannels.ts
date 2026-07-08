@@ -169,6 +169,7 @@ export function useChannels() {
     togglePlay,
     toggleNote,
     cycleStep,
+    clearNotes,
     outputs,
     selectedOutputId,
     enableMidi,

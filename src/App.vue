@@ -37,6 +37,7 @@ const {
   togglePlay,
   toggleNote,
   cycleStep,
+  clearNotes,
   outputs,
   selectedOutputId,
   enableMidi,
