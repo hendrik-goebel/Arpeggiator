@@ -1,49 +1,14 @@
-import { reactive, ref, computed, watch } from 'vue'
-import { createArpeggiator } from './arpeggiator'
-import { initMidi, listOutputs, selectOutput, sendNote } from './midi'
-import { CHANNEL_COUNT, DEFAULT_STEPS, DEFAULT_NOTES, DEFAULT_BASE, DEFAULT_BPM, DEFAULT_NOTE_LENGTH } from './config'
+import { ref, computed, watch } from 'vue'
+import { initMidi, listOutputs, selectOutput } from './midi'
+import { createChannel } from './models/channel'
+import { CHANNEL_COUNT, DEFAULT_BPM } from './config'
 
 export function useChannels() {
   const log = ref<string[]>([])
   const outputs = ref<{id:string,name:string}[]>([])
   const selectedOutputId = ref<string | null>(null)
 
-  function makeChannel(i:number) {
-    const palette = ['#f28b82','#fbbc04','#fff475','#ccff90','#a7ffeb','#cbf0f8','#aecbfa','#d7aefb']
-    const ch = reactive({
-      id: i,
-      name: `Ch ${i+1}`,
-      bpm: DEFAULT_BPM,
-      pattern: 'up' as any,
-      noteLength: DEFAULT_NOTE_LENGTH,
-      playing: false,
-      notes: DEFAULT_NOTES.slice() as number[],
-      steps: DEFAULT_STEPS.slice() as number[],
-      base: DEFAULT_BASE,
-      ar: null as any,
-      color: palette[i % palette.length],
-      active: false
-    })
-
-    ch.ar = createArpeggiator((note, vel, len) => {
-      const outId = selectedOutputId.value
-      if (outId) sendNote(outId, note, vel, len)
-      log.value.unshift(`${new Date().toISOString()} ${ch.name} NOTE ${note} vel=${vel} len=${len}`)
-      // flash the channel button while the note sounds
-      ch.active = true
-      const timeoutMs = Math.max(len || ch.noteLength || 120, 120)
-      setTimeout(() => { ch.active = false }, timeoutMs)
-    })
-
-    ch.ar.setBpm(ch.bpm)
-    ch.ar.setPattern(ch.pattern)
-    ch.ar.setNoteLength(ch.noteLength)
-    ch.ar.setNotes(ch.notes)
-    ch.ar.setSteps(ch.steps)
-    return ch
-  }
-
-  const channels = Array.from({length: CHANNEL_COUNT}, (_,i)=> makeChannel(i))
+  const channels = Array.from({length: CHANNEL_COUNT}, (_, index)=> createChannel(index, selectedOutputId, log))
   const currentIndex = ref(0)
   const currentChannel = computed(() => channels[currentIndex.value])
 
@@ -51,98 +16,98 @@ export function useChannels() {
   const globalBpm = ref(DEFAULT_BPM)
   const globalPlaying = ref(false)
 
-  function setGlobalBpm(v:number){
-    globalBpm.value = v
+  function setGlobalBpm(bpm:number){
+    globalBpm.value = bpm
     if (syncChannels.value) {
       // Apply global tempo to running clocks but do not change channel BPM fields
-      channels.forEach(ch => { ch.ar.setBpm(v) })
+      channels.forEach(channel => { channel.arpeggiator.setBpm(bpm) })
     }
   }
 
   function toggleGlobalPlay(){
     if (globalPlaying.value) {
       // stop all channels
-      channels.forEach(ch => { if (ch.playing) { ch.ar.stop(); ch.playing = false } })
+      channels.forEach(channel => { if (channel.playing) { channel.arpeggiator.stop(); channel.playing = false } })
       globalPlaying.value = false
     } else {
       // start all channels
-      channels.forEach(ch => { if (!ch.playing) { ch.ar.start(); ch.playing = true } })
+      channels.forEach(channel => { if (!channel.playing) { channel.arpeggiator.start(); channel.playing = true } })
       globalPlaying.value = true
     }
   }
 
-  function setSyncChannels(v:boolean){
+  function setSyncChannels(enabled:boolean){
     // Toggle sync mode without changing any channel play states.
     // When enabling, ensure all arpeggiators use the global BPM but do not mutate channel BPM fields.
     // When disabling, restore each arpeggiator to its channel's local BPM so channels once again use their own tempo.
-    syncChannels.value = v
-    if (v) {
-      channels.forEach(ch => {
-        ch.ar.setBpm(globalBpm.value)
+    syncChannels.value = enabled
+    if (enabled) {
+      channels.forEach(channel => {
+        channel.arpeggiator.setBpm(globalBpm.value)
       })
     } else {
-      channels.forEach(ch => {
-        ch.ar.setBpm(ch.bpm)
+      channels.forEach(channel => {
+        channel.arpeggiator.setBpm(channel.bpm)
       })
     }
   }
 
-  function selectChannel(i:number){ currentIndex.value = i }
-  function toggleChannelPlay(i:number){
-    const ch = channels[i]
-    if (ch.playing) {
-      ch.ar.stop(); ch.playing = false
+  function selectChannel(index:number){ currentIndex.value = index }
+  function toggleChannelPlay(index:number){
+    const channel = channels[index]
+    if (channel.playing) {
+      channel.arpeggiator.stop(); channel.playing = false
     } else {
       // if any other channel is playing, align this channel's first note to them
-      const refCh = channels.find(c => c.playing && c !== ch)
-      if (refCh && typeof ch.ar.startAlignedTo === 'function') {
-        ch.ar.startAlignedTo(refCh.ar)
+      const referenceChannel = channels.find(c => c.playing && c !== channel)
+      if (referenceChannel && typeof channel.arpeggiator.startAlignedTo === 'function') {
+        channel.arpeggiator.startAlignedTo(referenceChannel.arpeggiator)
       } else {
-        ch.ar.start()
+        channel.arpeggiator.start()
       }
-      ch.playing = true
+      channel.playing = true
     }
   }
 
   function togglePlay(){
-    const ch = currentChannel.value
-    if (ch.playing) { ch.ar.stop(); ch.playing = false }
+    const channel = currentChannel.value
+    if (channel.playing) { channel.arpeggiator.stop(); channel.playing = false }
     else {
-      const refCh = channels.find(c => c.playing && c !== ch)
-      if (refCh && typeof ch.ar.startAlignedTo === 'function') {
-        ch.ar.startAlignedTo(refCh.ar)
+      const referenceChannel = channels.find(c => c.playing && c !== channel)
+      if (referenceChannel && typeof channel.arpeggiator.startAlignedTo === 'function') {
+        channel.arpeggiator.startAlignedTo(referenceChannel.arpeggiator)
       } else {
-        ch.ar.start()
+        channel.arpeggiator.start()
       }
-      ch.playing = true
+      channel.playing = true
     }
   }
 
-  function toggleNote(n:number){
-    const ch = currentChannel.value
-    const idx = ch.notes.indexOf(n)
-    if (idx === -1) {
-      ch.notes = [...ch.notes, n].sort((a,b)=>a-b)
+  function toggleNote(note:number){
+    const channel = currentChannel.value
+    const noteIndex = channel.notes.indexOf(note)
+    if (noteIndex === -1) {
+      channel.notes = [...channel.notes, note].sort((a,b)=>a-b)
     } else {
-      ch.notes = ch.notes.filter((x:any)=>x!==n)
-      const maxIndex = ch.notes.length - 1
-      ch.steps = ch.steps.map((s:any)=> (s > maxIndex ? -1 : s))
+      channel.notes = channel.notes.filter((x:any)=>x!==note)
+      const maxIndex = channel.notes.length - 1
+      channel.steps = channel.steps.map((stepValue:any)=> (stepValue > maxIndex ? -1 : stepValue))
     }
-    ch.ar.setNotes(ch.notes)
+    channel.arpeggiator.setNotes(channel.notes)
   }
 
-  function cycleStep(i:number){
-    const ch = currentChannel.value
-    const noteCount = ch.notes.length
-    let v = ch.steps[i]
-    if (noteCount === 0) { ch.steps[i] = -1; ch.ar.setSteps(ch.steps); return }
-    if (v == null) v = -1
-    v = v + 1
-    if (v >= noteCount) v = -1
-    const newSteps = ch.steps.slice()
-    newSteps[i] = v
-    ch.steps = newSteps
-    ch.ar.setSteps(ch.steps)
+  function cycleStep(stepIndex:number){
+    const channel = currentChannel.value
+    const noteCount = channel.notes.length
+    let value = channel.steps[stepIndex]
+    if (noteCount === 0) { channel.steps[stepIndex] = -1; channel.arpeggiator.setSteps(channel.steps); return }
+    if (value == null) value = -1
+    value = value + 1
+    if (value >= noteCount) value = -1
+    const newSteps = channel.steps.slice()
+    newSteps[stepIndex] = value
+    channel.steps = newSteps
+    channel.arpeggiator.setSteps(channel.steps)
   }
 
   async function enableMidi(){
@@ -153,17 +118,17 @@ export function useChannels() {
 
   watch(selectedOutputId, (id) => { if (id) selectOutput(id) })
 
-  function updateBpm(v:number){
+  function updateBpm(bpm:number){
     if (syncChannels.value) {
       // update the global BPM and apply to all running clocks; do not change channel BPM fields
-      globalBpm.value = v
-      channels.forEach(c => { c.ar.setBpm(v) })
+      globalBpm.value = bpm
+      channels.forEach(channel => { channel.arpeggiator.setBpm(bpm) })
     } else {
-      currentChannel.value.ar.setBpm(v); currentChannel.value.bpm = v
+      currentChannel.value.arpeggiator.setBpm(bpm); currentChannel.value.bpm = bpm
     }
   }
-  function updatePattern(v:any){ currentChannel.value.ar.setPattern(v); currentChannel.value.pattern = v }
-  function updateNoteLength(v:number){ currentChannel.value.ar.setNoteLength(v); currentChannel.value.noteLength = v }
+  function updatePattern(pattern:any){ currentChannel.value.arpeggiator.setPattern(pattern); currentChannel.value.pattern = pattern }
+  function updateNoteLength(length:number){ currentChannel.value.arpeggiator.setNoteLength(length); currentChannel.value.noteLength = length }
 
   return {
     channels,

@@ -1,4 +1,4 @@
-import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH } from './config'
+import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH } from '../config'
 import { createMidiClock } from './midiClock'
 
 export type Pattern = 'up'|'down'|'updown'|'random'
