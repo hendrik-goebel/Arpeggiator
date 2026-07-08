@@ -34,21 +34,21 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   function tick() {
     // Tick is called at a subdivision of the beat (configured in midiClock).
     // Use steps[] mapping to decide whether to play a note on this 16th.
-    if (!notes.length) return
+    if (!steps || steps.length === 0) { stepPointer = (stepPointer + 1) % Math.max(1, STEP_COUNT); advanceIndexForPattern(); return }
 
     const stepCount = Math.max(1, steps.length)
     const currentStep = stepPointer % stepCount
     const stepValue = steps[currentStep]
 
-    if (typeof stepValue === 'number' && stepValue >= 0 && stepValue < notes.length) {
-      const noteToPlay = notes[stepValue]
-      if (noteToPlay != null) sendNote(noteToPlay, MIDI.VELOCITY_MAX, noteLength)
+    if (typeof stepValue === 'number' && stepValue >= 0) {
+      // stepValue is a MIDI note number
+      sendNote(stepValue, MIDI.VELOCITY_MAX, noteLength)
     }
 
     // advance pointers
     stepPointer = (stepPointer + 1) % Math.max(1, STEP_COUNT)
 
-    // also advance pattern index so pattern state remains sensible when steps target pattern index
+    // also advance pattern index for pattern-based arpeggios
     advanceIndexForPattern()
   }
 

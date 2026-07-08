@@ -8,8 +8,8 @@
     <div v-for="(note, noteIndex) in notes" :key="note" class="row">
       <div class="note-col" @click="$emit('toggle-note', note)">{{ noteName(note) }}</div>
       <div v-for="stepIndex in stepCountArray" :key="stepIndex-1" class="step-col"
-           :class="{active: steps && steps[stepIndex-1] === noteIndex, playing: props.playStep === (stepIndex-1)}"
-           @click="$emit('toggle-step', { step: stepIndex-1, noteIndex })"></div>
+           :class="{active: steps && steps[stepIndex-1] === note, playing: props.playStep === (stepIndex-1)}"
+           @click="$emit('toggle-step', { step: stepIndex-1, note })"></div>
     </div>
   </div>
 </template>

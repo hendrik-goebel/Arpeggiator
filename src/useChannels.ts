@@ -90,44 +90,38 @@ export function useChannels() {
       channel.notes = [...channel.notes, note].sort((a,b)=>a-b)
     } else {
       channel.notes = channel.notes.filter((x:any)=>x!==note)
-      const maxIndex = channel.notes.length - 1
-      channel.steps = channel.steps.map((stepValue:any)=> (stepValue > maxIndex ? -1 : stepValue))
+      // replace any matching step note values with -1 (rest)
+      channel.steps = channel.steps.map((stepValue:any)=> (stepValue === note ? -1 : stepValue))
     }
     channel.arpeggiator.setNotes(channel.notes)
   }
 
   function cycleStep(payload:any){
     const channel = currentChannel.value
-    const noteCount = channel.notes.length
-    if (noteCount === 0) {
-      // if no notes, always set rest
-      const stepIndex = typeof payload === 'number' ? payload : payload && payload.step
-      if (typeof stepIndex === 'number') {
-        channel.steps[stepIndex] = -1
-        channel.arpeggiator.setSteps(channel.steps)
-      }
-      return
-    }
-
+    // payload can be a number (legacy) or {step, note}
     if (typeof payload === 'number') {
-      // legacy behavior: cycle through note indices
+      // legacy: toggle through available notes by rotating index into channel.notes
       const stepIndex = payload
-      let value = channel.steps[stepIndex]
-      if (value == null) value = -1
-      value = value + 1
-      if (value >= noteCount) value = -1
-      const newSteps = channel.steps.slice()
-      newSteps[stepIndex] = value
-      channel.steps = newSteps
+      const noteCount = channel.notes.length
+      if (noteCount === 0) { channel.steps[stepIndex] = -1; channel.arpeggiator.setSteps(channel.steps); return }
+      let current = channel.steps[stepIndex]
+      // if current is a MIDI note, find its index among channel.notes
+      let idx = channel.notes.indexOf(current)
+      if (idx === -1) idx = -1
+      idx = idx + 1
+      if (idx >= noteCount) {
+        channel.steps[stepIndex] = -1
+      } else {
+        channel.steps[stepIndex] = channel.notes[idx]
+      }
       channel.arpeggiator.setSteps(channel.steps)
       return
     }
 
-    // payload is {step, noteIndex} -> toggle that specific cell
-    const { step, noteIndex } = payload
+    const { step, note } = payload
     const newSteps = channel.steps.slice()
-    if (newSteps[step] === noteIndex) newSteps[step] = -1
-    else newSteps[step] = noteIndex
+    if (newSteps[step] === note) newSteps[step] = -1
+    else newSteps[step] = note
     channel.steps = newSteps
     channel.arpeggiator.setSteps(channel.steps)
   }
