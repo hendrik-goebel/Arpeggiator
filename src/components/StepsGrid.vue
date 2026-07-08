@@ -9,7 +9,7 @@
       <div class="note-col" @click="$emit('toggle-note', note)">{{ noteName(note) }}</div>
       <div v-for="stepIndex in stepCountArray" :key="stepIndex-1" class="step-col"
            :class="{active: steps && steps[stepIndex-1] === noteIndex}"
-           @click="$emit('cycle-step', stepIndex-1)"></div>
+           @click="$emit('toggle-step', { step: stepIndex-1, noteIndex })"></div>
     </div>
   </div>
 </template>

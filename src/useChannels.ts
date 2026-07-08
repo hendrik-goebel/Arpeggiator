@@ -96,16 +96,38 @@ export function useChannels() {
     channel.arpeggiator.setNotes(channel.notes)
   }
 
-  function cycleStep(stepIndex:number){
+  function cycleStep(payload:any){
     const channel = currentChannel.value
     const noteCount = channel.notes.length
-    let value = channel.steps[stepIndex]
-    if (noteCount === 0) { channel.steps[stepIndex] = -1; channel.arpeggiator.setSteps(channel.steps); return }
-    if (value == null) value = -1
-    value = value + 1
-    if (value >= noteCount) value = -1
+    if (noteCount === 0) {
+      // if no notes, always set rest
+      const stepIndex = typeof payload === 'number' ? payload : payload && payload.step
+      if (typeof stepIndex === 'number') {
+        channel.steps[stepIndex] = -1
+        channel.arpeggiator.setSteps(channel.steps)
+      }
+      return
+    }
+
+    if (typeof payload === 'number') {
+      // legacy behavior: cycle through note indices
+      const stepIndex = payload
+      let value = channel.steps[stepIndex]
+      if (value == null) value = -1
+      value = value + 1
+      if (value >= noteCount) value = -1
+      const newSteps = channel.steps.slice()
+      newSteps[stepIndex] = value
+      channel.steps = newSteps
+      channel.arpeggiator.setSteps(channel.steps)
+      return
+    }
+
+    // payload is {step, noteIndex} -> toggle that specific cell
+    const { step, noteIndex } = payload
     const newSteps = channel.steps.slice()
-    newSteps[stepIndex] = value
+    if (newSteps[step] === noteIndex) newSteps[step] = -1
+    else newSteps[step] = noteIndex
     channel.steps = newSteps
     channel.arpeggiator.setSteps(channel.steps)
   }
