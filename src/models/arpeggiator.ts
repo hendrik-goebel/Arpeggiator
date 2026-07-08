@@ -118,34 +118,3 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
 
   return { start, startAlignedTo, stop, setBpm, setPattern, setNotes, setNoteLength, setSteps, getState, timeToNextTick, setLoopLength }
 }
-
-  function startAlignedTo(other:any){
-    if (!notes.length) return
-
-    // copy position state from other if available (guarded)
-    if (other && typeof other.getState === 'function') {
-      const s = other.getState()
-      noteIndex = s.index ?? noteIndex
-      stepPointer = s.stepIndex ?? stepPointer
-      scanDirection = s.direction ?? scanDirection
-      pattern = s.pattern ?? pattern
-    }
-
-    const delay = (other && typeof other.timeToNextTick === 'function') ? other.timeToNextTick() : 0
-    clock.startAlignedTo(delay)
-  }
-
-  function timeToNextTick(){ return clock.timeToNextTick() }
-
-  function getState(){ return { index: noteIndex, stepIndex: stepPointer, direction: scanDirection, pattern } }
-
-  function stop(){ clock.stop() }
-
-  function setBpm(v:number){ clock.setBpm(v) }
-  function setPattern(p:Pattern){ pattern = p }
-  function setNotes(n:number[]){ notes = n; noteIndex = (pattern === 'random' && n.length) ? Math.floor(Math.random() * n.length) : 0; scanDirection = 1 }
-  function setNoteLength(ms:number){ noteLength = ms }
-  function setSteps(s:number[]){ steps = s; stepPointer = 0 }
-
-  return { start, startAlignedTo, stop, setBpm, setPattern, setNotes, setNoteLength, setSteps, getState, timeToNextTick }
-}
