@@ -25,7 +25,7 @@
       </label>
     </div>
 
-    <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :play-step="playStep" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
+    <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :play-step="playStep" :step-count="channel.loopLength" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
 
     <LogPanel :lines="log" />
   </div>

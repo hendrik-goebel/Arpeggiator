@@ -50,6 +50,8 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
   channel.arpeggiator.setPattern(channel.pattern)
   channel.arpeggiator.setNoteLength(channel.noteLength)
   channel.arpeggiator.setNotes(channel.notes)
+  // ensure arpeggiator knows about the initial loop length before setting steps
+  if (typeof channel.arpeggiator.setLoopLength === 'function') channel.arpeggiator.setLoopLength(channel.loopLength)
   channel.arpeggiator.setSteps(channel.steps)
   return channel
 }
