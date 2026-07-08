@@ -44,7 +44,8 @@ const {
   log,
   updateBpm,
   updatePattern,
-  updateNoteLength
+  updateNoteLength,
+  updateLoopLength
 } = useChannels()
 </script>
 
