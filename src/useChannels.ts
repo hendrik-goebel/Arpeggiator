@@ -168,6 +168,13 @@ export function useChannels() {
     }
   }
 
+  function updateQuantisation(q:number){
+    const channel = currentChannel.value
+    const newQ = Math.max(1, Math.min(64, Math.floor(q)))
+    channel.quantisation = newQ
+    if (typeof channel.arpeggiator.setSubdivision === 'function') channel.arpeggiator.setSubdivision(newQ)
+  }
+
   return {
     channels,
     currentIndex,

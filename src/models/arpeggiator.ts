@@ -1,4 +1,4 @@
-import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH, STEP_COUNT } from '../config'
+import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH, STEP_COUNT, DEFAULT_QUANT } from '../config'
 import { createMidiClock } from './midiClock'
 import { MIDI } from '../midi/constants'
 
@@ -15,6 +15,8 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   let loopLength = STEP_COUNT
   let clock: any = null
   let isPlaying = false
+  // subdivision controls ticks per beat (quantisation)
+  let subdivision = DEFAULT_QUANT
 
   const safeModulo = (n:number, m:number) => ((n % m) + m) % m
 
@@ -35,9 +37,7 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   }
 
   function ensureClock() {
-    // Use fixed 16th-note resolution: 4 ticks per beat (so tempo doesn't change with loop length)
-    const subdivision = 4
-    // recreate clock with new subdivision
+    // recreate clock with current subdivision value
     if (clock && typeof clock.stop === 'function') clock.stop()
     clock = createMidiClock(DEFAULT_BPM, tick, subdivision)
     if (isPlaying && clock && typeof clock.start === 'function') clock.start()
@@ -115,6 +115,7 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   function setNotes(n:number[]){ notes = n; noteIndex = (pattern === 'random' && n.length) ? Math.floor(Math.random() * n.length) : 0; scanDirection = 1 }
   function setNoteLength(ms:number){ noteLength = ms }
   function setSteps(s:number[]){ steps = s; stepPointer = 0 }
+  function setSubdivision(n:number){ subdivision = Math.max(1, Math.min(64, Math.floor(n))); ensureClock() }
 
-  return { start, startAlignedTo, stop, setBpm, setPattern, setNotes, setNoteLength, setSteps, getState, timeToNextTick, setLoopLength }
+  return { start, startAlignedTo, stop, setBpm, setPattern, setNotes, setNoteLength, setSteps, getState, timeToNextTick, setLoopLength, setSubdivision }
 }

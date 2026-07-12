@@ -1,125 +1,39 @@
+import { createTickProcessor } from '../midi/tickProcessor'
+import { createWorkletClock } from '../midi/workletClock'
+
 export function createMidiClock(initialBpm: number, onTick: () => void, subdivision = 1) {
-  // subdivision: how many ticks per beat (e.g., 4 for 16th-note resolution when 4 ticks per beat)
-  let beatsPerMinute = initialBpm
-  let pendingBeatsPerMinute: number | null = null
+  // Create both implementations and prefer worklet when available
+  const fallback = createTickProcessor(initialBpm, onTick, subdivision)
+  const worklet = createWorkletClock(initialBpm, onTick, subdivision)
+
+  let isUsingWorklet = false
   let isPlaying = false
-  let audioContext: any = null
-  let fallbackSchedulerTimer: any = null
-  let lastTickTimestamp = 0
-
-  // Worklet/node state
-  let audioWorkletNode: any = null
-  let workletModuleLoaded = false
-
-  const getIntervalMs = () => (60000 / (beatsPerMinute * subdivision))
-  const nowMs = () => (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now()
-
-  function tryCreateAudioContext() {
-    if (audioContext) return true
-    const AudioContext = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext
-    if (!AudioContext) return false
-    try {
-      audioContext = new AudioContext()
-      if (audioContext.state === 'suspended' && typeof audioContext.resume === 'function') audioContext.resume().catch(() => {})
-      return true
-    } catch (e) {
-      audioContext = null
-      return false
-    }
-  }
-
-  // Helper to safely post messages to the worklet
-  function postToWorklet(message: any) {
-    try { audioWorkletNode?.port?.postMessage(message) } catch (e) {}
-  }
-
-  // Load an external AudioWorklet module file; returns a Promise<boolean> indicating success
-  let moduleLoadingPromise: Promise<boolean> | null = null
-  async function ensureWorkletModule(): Promise<boolean> {
-    if (workletModuleLoaded) return true
-    if (moduleLoadingPromise) return moduleLoadingPromise
-    if (!tryCreateAudioContext()) return false
-
-    moduleLoadingPromise = (async () => {
-      try {
-        const moduleUrl = new URL('./midi/midi-clock-processor.js', import.meta.url).toString()
-        await audioContext.audioWorklet.addModule(moduleUrl)
-        workletModuleLoaded = true
-        return true
-      } catch (e) {
-        workletModuleLoaded = false
-        return false
-      }
-    })()
-
-    return moduleLoadingPromise
-  }
-
-  function startWorklet(delayMs?: number) {
-    if (!audioContext || !workletModuleLoaded) return false
-    if (audioWorkletNode) return true
-    try {
-      audioWorkletNode = new (globalThis as any).AudioWorkletNode(audioContext, 'midi-clock-processor')
-      audioWorkletNode.port.onmessage = (event:any) => {
-        if (event?.data?.type === 'tick') {
-          lastTickTimestamp = Date.now()
-          onTick()
-        }
-      }
-      // init
-      postToWorklet({ type: 'init', sampleRate: audioContext.sampleRate, bpm: beatsPerMinute * subdivision })
-      // start with optional delay
-      const startInSamples = (typeof delayMs === 'number') ? Math.max(0, Math.floor((delayMs/1000) * audioContext.sampleRate)) : undefined
-      postToWorklet({ type: 'start', bpm: beatsPerMinute * subdivision, startInSamples })
-      return true
-    } catch (e) {
-      audioWorkletNode = null
-      return false
-    }
-  }
-
-  // Fallback perf-based scheduler (drift-correcting)
-  let nextScheduledTickPerf = 0
-  function scheduleLoopFallback() {
-    if (!isPlaying) return
-    const now = nowMs()
-    nextScheduledTickPerf ||= now
-
-    let safety = 0
-    while (nextScheduledTickPerf <= now + 1 && safety < 1000) {
-      lastTickTimestamp = Date.now()
-      onTick()
-      if (pendingBeatsPerMinute != null) { beatsPerMinute = pendingBeatsPerMinute; pendingBeatsPerMinute = null }
-      nextScheduledTickPerf += getIntervalMs()
-      safety++
-    }
-
-    const msUntil = Math.max(nextScheduledTickPerf - nowMs() - 2, 0)
-    clearTimeout(fallbackSchedulerTimer)
-    fallbackSchedulerTimer = setTimeout(scheduleLoopFallback, msUntil)
-  }
 
   async function startInternal(delayMs?: number) {
     if (isPlaying) return
     isPlaying = true
-    lastTickTimestamp = 0
 
-    // attempt to use AudioWorklet first
-    const workletReady = await ensureWorkletModule()
-    if (workletReady && startWorklet(delayMs)) return
+    // Try to initialize worklet module
+    const workletReady = await worklet.ensureWorkletModule()
+    if (workletReady && worklet.start()) {
+      isUsingWorklet = true
+      // stop fallback if it started for some reason
+      try { fallback.stop() } catch (e) {}
+      return
+    }
 
-    // fallback to perf scheduler
-    nextScheduledTickPerf = nowMs() + (delayMs || 0)
-    scheduleLoopFallback()
-
-    // when module finishes loading, switch to worklet if possible
-    moduleLoadingPromise?.then((ready) => {
-      if (!isPlaying || !ready) return
-      clearTimeout(fallbackSchedulerTimer)
-      fallbackSchedulerTimer = null
-      nextScheduledTickPerf = 0
-      startWorklet(delayMs)
-    }).catch(() => {})
+    // fallback
+    fallback.startAlignedTo(delayMs || 0)
+    // if module loads later, switch over using async/await
+    (async () => {
+      try {
+        const ready = await worklet.ensureWorkletModule()
+        if (!isPlaying || !ready) return
+        try { fallback.stop() } catch (e) {}
+        worklet.startAlignedTo(delayMs || 0)
+        isUsingWorklet = true
+      } catch (e) {}
+    })()
   }
 
   function start() { void startInternal() }
@@ -128,29 +42,26 @@ export function createMidiClock(initialBpm: number, onTick: () => void, subdivis
   function stop() {
     if (!isPlaying) return
     isPlaying = false
-    clearTimeout(fallbackSchedulerTimer)
-    fallbackSchedulerTimer = null
-    // stop worklet if running
-    if (audioWorkletNode) {
-      postToWorklet({ type: 'stop' })
-      try { audioWorkletNode.disconnect(); audioWorkletNode = null } catch (e) { audioWorkletNode = null }
-    }
+    try { fallback.stop() } catch (e) {}
+    try { worklet.stop() } catch (e) {}
+    isUsingWorklet = false
   }
 
   function setBpm(v: number) {
-    if (!isPlaying) { beatsPerMinute = v; return }
-    pendingBeatsPerMinute = v
-    postToWorklet({ type: 'setBpm', bpm: v * subdivision })
+    // update both implementations so they stay in sync when switching
+    try { fallback.setBpm(v) } catch (e) {}
+    try { worklet.setBpm(v) } catch (e) {}
   }
 
   function timeToNextTick() {
-    if (!isPlaying) return 0
-    if (audioWorkletNode && audioContext) return 0
-    return Math.max(0, (nextScheduledTickPerf || 0) - nowMs())
+    try {
+      if (isUsingWorklet) return worklet.timeToNextTick()
+    return fallback.timeToNextTick()
+  } catch (e) { return 0 }
   }
 
   function getState() {
-    return { bpm: beatsPerMinute, lastTickAt: lastTickTimestamp }
+    try { return isUsingWorklet ? worklet.getState() : fallback.getState() } catch (e) { return { bpm: initialBpm, lastTickAt: 0 } }
   }
 
   return { start, startAlignedTo, stop, setBpm, timeToNextTick, getState }

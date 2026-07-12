@@ -1,7 +1,7 @@
 import { reactive, Ref } from 'vue'
 import { createArpeggiator, Pattern } from './arpeggiator'
 import { sendNote } from '../midi/midi'
-import { DEFAULT_NOTES, DEFAULT_STEPS, DEFAULT_BASE, DEFAULT_BPM, DEFAULT_NOTE_LENGTH } from '../config'
+import { DEFAULT_NOTES, DEFAULT_STEPS, DEFAULT_BASE, DEFAULT_BPM, DEFAULT_NOTE_LENGTH, DEFAULT_QUANT } from '../config'
 
 export interface Channel {
   id: number
@@ -13,6 +13,8 @@ export interface Channel {
   notes: number[]
   steps: number[]
   base: number
+  loopLength: number
+  quantisation: number
   arpeggiator: ReturnType<typeof createArpeggiator> | any
   color: string
   active: boolean
@@ -31,6 +33,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     steps: DEFAULT_STEPS.slice() as number[],
     base: DEFAULT_BASE,
     loopLength: DEFAULT_STEPS.length,
+    quantisation: DEFAULT_QUANT,
     arpeggiator: null as any,
     color: palette[index % palette.length],
     active: false
@@ -53,5 +56,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
   // ensure arpeggiator knows about the initial loop length before setting steps
   if (typeof channel.arpeggiator.setLoopLength === 'function') channel.arpeggiator.setLoopLength(channel.loopLength)
   channel.arpeggiator.setSteps(channel.steps)
+  // apply initial quantisation to arpeggiator
+  if (typeof channel.arpeggiator.setSubdivision === 'function') channel.arpeggiator.setSubdivision(channel.quantisation)
   return channel
 }

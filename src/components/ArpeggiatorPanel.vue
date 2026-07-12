@@ -11,6 +11,11 @@
           <option value="random">Random</option>
         </select>
       </label>
+      <label>Quantisation:
+        <select :value="channel.quantisation" @change="$emit('update-quant', +$event.target.value)">
+          <option v-for="q in [1,2,3,4,5,8,16,32,64]" :key="q" :value="q">{{ q }}</option>
+        </select>
+      </label>
       <label>Note length (ms): <input type="number" :value="channel.noteLength" @input="$emit('update-noteLength', +$event.target.value)" min="50" max="2000" /></label>
       <label>Loop length:
         <input type="number" :value="channel.loopLength" @input="$emit('update-loop-length', +$event.target.value)" min="1" max="32" />

@@ -1,5 +1,6 @@
 export const DEFAULT_BPM = 120
 export const DEFAULT_NOTE_LENGTH = 200
+export const DEFAULT_QUANT = 4
 export const CHANNEL_COUNT = 8
 export const STEP_COUNT = 16
 export const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
