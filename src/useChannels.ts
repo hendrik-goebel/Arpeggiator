@@ -198,6 +198,7 @@ export function useChannels() {
     updateBpm,
     updatePattern,
     updateNoteLength,
+    updateQuantisation,
     updateLoopLength
   }
 }
