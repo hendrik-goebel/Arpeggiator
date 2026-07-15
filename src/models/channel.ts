@@ -22,7 +22,6 @@ export interface Channel {
 }
 
 export function createChannel(index: number, selectedOutputId: Ref<string | null>, log: Ref<string[]>) : Channel {
-  const palette = ['#f28b82','#fbbc04','#fff475','#ccff90','#a7ffeb','#cbf0f8','#aecbfa','#d7aefb']
   const arpeggiator = markRaw(createArpeggiator())
   const channel = reactive({
     id: index,
@@ -37,17 +36,17 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     loopLength: DEFAULT_STEPS.length,
     quantisation: DEFAULT_QUANT,
     arpeggiator,
-    color: palette[index % palette.length],
+    color: '#f28b82',
     active: false,
     playStep: null as number | null
   }) as Channel
 
   arpeggiator.on('note', (payload) => {
+    channel.active = true
     const { note, velocity, length } = payload
     const outputId = selectedOutputId.value
     if (outputId) sendNote(outputId, note, velocity, length)
     log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${velocity} len=${length}`)
-    channel.active = true
     const timeoutMs = Math.max(length || channel.noteLength || 120, 120)
     setTimeout(() => { channel.active = false }, timeoutMs)
   })
