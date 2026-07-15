@@ -36,6 +36,7 @@ export function sendNote(outputId:string, note:number, velocity:number, lengthMs
   if (!out) return
   const safeNote = clampMidiValue(note)
   const safeVelocity = clampMidiValue(velocity)
+  console.log(`[midi-note-on] output=${outputId} note=${safeNote} velocity=${safeVelocity} time=${new Date().toISOString()}`)
   out.send([MIDI.NOTE_ON, safeNote, safeVelocity])
   setTimeout(()=> out.send([MIDI.NOTE_OFF, safeNote, MIDI.DEFAULT_OFF_VELOCITY]), lengthMs)
 }
@@ -44,6 +45,7 @@ export function sendRaw(note:number, velocity:number, lengthMs:number) {
   if (!selectedOutput) return
   const safeNote = clampMidiValue(note)
   const safeVelocity = clampMidiValue(velocity)
+  console.log(`[midi-note-on] output=${selectedOutput.id} note=${safeNote} velocity=${safeVelocity} time=${new Date().toISOString()}`)
   selectedOutput.send([MIDI.NOTE_ON, safeNote, safeVelocity])
   setTimeout(()=> selectedOutput && selectedOutput.send([MIDI.NOTE_OFF, safeNote, MIDI.DEFAULT_OFF_VELOCITY]), lengthMs)
 }

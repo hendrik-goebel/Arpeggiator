@@ -25,8 +25,9 @@ export function createArpeggiator() {
   let loopLength = STEP_COUNT
   let clock: any = null
   let isPlaying = false
-  // subdivision controls ticks per beat (quantisation)
-  let subdivision = DEFAULT_QUANT
+  // The UI quantisation is a note denominator: 4 is a quarter note.
+  let subdivision = DEFAULT_QUANT / 4
+  let bpm = DEFAULT_BPM
 
   const safeModulo = (n:number, m:number) => ((n % m) + m) % m
 
@@ -49,7 +50,7 @@ export function createArpeggiator() {
   function ensureClock() {
     // recreate clock with current subdivision value
     if (clock && typeof clock.stop === 'function') clock.stop()
-    clock = createMidiClock(DEFAULT_BPM, tick, subdivision)
+    clock = createMidiClock(bpm, tick, subdivision)
     if (isPlaying && clock && typeof clock.start === 'function') clock.start()
   }
 
@@ -73,6 +74,8 @@ export function createArpeggiator() {
     const currentStep = stepPointer % stepCount
     const stepValue = steps[currentStep]
 
+    events.emit('tick', { stepIndex: currentStep, noteIndex: noteIndex, pattern })
+
     if (Array.isArray(stepValue)) {
       // chord: play all notes
       stepValue.forEach((n:any)=>{
@@ -84,8 +87,6 @@ export function createArpeggiator() {
       // single MIDI note
       events.emit('note', { note: stepValue, velocity: MIDI.VELOCITY_MAX, length: noteLength })
     }
-
-    events.emit('tick', { stepIndex: currentStep, noteIndex: noteIndex, pattern })
 
     // advance pointers
     stepPointer = (stepPointer + 1) % Math.max(1, loopLength)
@@ -138,12 +139,19 @@ export function createArpeggiator() {
     }
   }
 
-  function setBpm(v:number){ if (clock && typeof clock.setBpm === 'function') clock.setBpm(v) }
+  function setBpm(v:number){
+    bpm = v
+    if (clock && typeof clock.setBpm === 'function') clock.setBpm(v)
+  }
   function setPattern(p:Pattern){ pattern = p }
   function setNotes(n:number[]){ notes = n; noteIndex = (pattern === 'random' && n.length) ? Math.floor(Math.random() * n.length) : 0; scanDirection = 1 }
   function setNoteLength(ms:number){ noteLength = ms }
   function setSteps(s:number[]){ steps = s; stepPointer = 0 }
-  function setSubdivision(n:number){ subdivision = Math.max(1, Math.min(64, Math.floor(n))); ensureClock() }
+  function setSubdivision(n:number){
+    const quantisation = Math.max(1, Math.min(64, Math.floor(n)))
+    subdivision = quantisation / 4
+    ensureClock()
+  }
 
   function on<EventName extends keyof ArpeggiatorEvents>(
     eventName: EventName,
