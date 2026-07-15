@@ -1,7 +1,8 @@
 import { ref, computed, watch } from 'vue'
-import { initMidi, listOutputs, selectOutput } from './midi/midi'
+import { initMidi, listOutputs, selectOutput, sendNote } from './midi/midi'
 import { createChannel } from './models/channel'
-import { CHANNEL_COUNT, DEFAULT_BPM, STEP_COUNT } from './config'
+import { CHANNEL_COUNT, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, STEP_COUNT } from './config'
+import { MIDI } from './midi/constants'
 
 export function useChannels() {
   const log = ref<string[]>([])
@@ -132,6 +133,21 @@ export function useChannels() {
     channel.arpeggiator.setSteps(channel.steps)
   }
 
+  function playKeyboardNote(key: string) {
+    const offset = KEYBOARD_NOTE_OFFSETS[key.toLowerCase()]
+    if (offset === undefined) return false
+
+    const channel = currentChannel.value
+    const note = channel.base + offset
+    const outputId = selectedOutputId.value
+    if (outputId) sendNote(outputId, note, MIDI.VELOCITY_MAX, channel.noteLength)
+
+    channel.active = true
+    log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${MIDI.VELOCITY_MAX} len=${channel.noteLength}`)
+    setTimeout(() => { channel.active = false }, Math.max(channel.noteLength, 120))
+    return true
+  }
+
   async function enableMidi(){
     await initMidi()
     outputs.value = listOutputs()
@@ -189,6 +205,7 @@ export function useChannels() {
     toggleNote,
     cycleStep,
     clearNotes,
+    playKeyboardNote,
     outputs,
     selectedOutputId,
     enableMidi,

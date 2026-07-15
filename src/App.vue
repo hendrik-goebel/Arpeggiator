@@ -18,6 +18,7 @@
 </template>
 
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted } from 'vue'
 import ChannelsBar from './components/ChannelsBar.vue'
 import ArpeggiatorPanel from './components/ArpeggiatorPanel.vue'
 import { useChannels } from './useChannels'
@@ -38,6 +39,7 @@ const {
   toggleNote,
   cycleStep,
   clearNotes,
+  playKeyboardNote,
   outputs,
   selectedOutputId,
   enableMidi,
@@ -48,6 +50,21 @@ const {
   updateLoopLength,
   updateQuantisation
 } = useChannels()
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.repeat) return
+
+  const target = event.target
+  if (target instanceof HTMLElement &&
+      (target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(target.tagName))) {
+    return
+  }
+
+  if (playKeyboardNote(event.key)) event.preventDefault()
+}
+
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 </script>
 
 <style scoped>
