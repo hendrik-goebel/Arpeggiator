@@ -1,3 +1,14 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import StepsGrid from './StepsGrid.vue'
+import LogPanel from './LogPanel.vue'
+import { DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE } from '../config'
+const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
+
+const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
+const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
+</script>
+
 <template>
   <div class="arpeggiator-panel">
     <h2>{{ channel.name }} Arpeggiator</h2>
@@ -30,44 +41,11 @@
       </label>
     </div>
 
-    <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :play-step="playStep" :step-count="channel.loopLength" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
+    <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :play-step="channel.playStep" :step-count="channel.loopLength" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
 
     <LogPanel :lines="log" />
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import StepsGrid from './StepsGrid.vue'
-import LogPanel from './LogPanel.vue'
-import { DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE } from '../config'
-const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
-
-const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
-const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
-
-const playStep = ref<number | null>(null)
-let pollTimer: any = null
-
-function pollOnce(){
-  try {
-    const ar = props.channel?.arpeggiator
-    if (ar && typeof ar.getState === 'function') {
-      const s = ar.getState()
-      playStep.value = (s && typeof s.stepIndex === 'number') ? s.stepIndex : null
-    } else {
-      playStep.value = null
-    }
-  } catch (e) { playStep.value = null }
-}
-
-function startPolling(){ stopPolling(); pollOnce(); pollTimer = setInterval(pollOnce, 40) }
-function stopPolling(){ if (pollTimer) { clearInterval(pollTimer); pollTimer = null } }
-
-onMounted(() => startPolling())
-onUnmounted(() => stopPolling())
-watch(() => props.channel, () => startPolling())
-</script>
 
 <style scoped>
 .arpeggiator-panel { border-top:1px solid #eee; padding-top:1rem }

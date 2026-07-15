@@ -15,7 +15,8 @@ export function createMidiClock(initialBpm: number, onTick: () => void, subdivis
 
     // Try to initialize worklet module
     const workletReady = await worklet.ensureWorkletModule()
-    if (workletReady && worklet.start()) {
+    if (workletReady) {
+      worklet.start()
       isUsingWorklet = true
       // stop fallback if it started for some reason
       try { fallback.stop() } catch (e) {}
@@ -23,7 +24,7 @@ export function createMidiClock(initialBpm: number, onTick: () => void, subdivis
     }
 
     // fallback
-    fallback.startAlignedTo(delayMs || 0)
+    ;(fallback as any).startAlignedTo(delayMs || 0)
     // if module loads later, switch over using async/await
     (async () => {
       try {

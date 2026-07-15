@@ -1,10 +1,20 @@
 import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH, STEP_COUNT, DEFAULT_QUANT } from '../config'
 import { createMidiClock } from './midiClock'
 import { MIDI } from '../midi/constants'
+import { createEventEmitter } from '../utils/eventEmitter'
 
 export type Pattern = 'up'|'down'|'updown'|'random'
 
-export function createArpeggiator(sendNote: (note:number, vel:number, len:number)=>void) {
+export type ArpeggiatorEvents = {
+  tick: { stepIndex: number, noteIndex: number, pattern: Pattern }
+  note: { note: number, velocity: number, length: number }
+  start: { stepIndex: number }
+  stop: void
+}
+
+export function createArpeggiator() {
+  const events = createEventEmitter<ArpeggiatorEvents>()
+
   let notes: number[] = []
   let pattern: Pattern = 'up'
   let noteLength = DEFAULT_NOTE_LENGTH
@@ -65,11 +75,17 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
 
     if (Array.isArray(stepValue)) {
       // chord: play all notes
-      stepValue.forEach((n:any)=>{ if (typeof n === 'number' && n >= 0) sendNote(n, MIDI.VELOCITY_MAX, noteLength) })
+      stepValue.forEach((n:any)=>{
+        if (typeof n === 'number' && n >= 0) {
+          events.emit('note', { note: n, velocity: MIDI.VELOCITY_MAX, length: noteLength })
+        }
+      })
     } else if (typeof stepValue === 'number' && stepValue >= 0) {
       // single MIDI note
-      sendNote(stepValue, MIDI.VELOCITY_MAX, noteLength)
+      events.emit('note', { note: stepValue, velocity: MIDI.VELOCITY_MAX, length: noteLength })
     }
+
+    events.emit('tick', { stepIndex: currentStep, noteIndex: noteIndex, pattern })
 
     // advance pointers
     stepPointer = (stepPointer + 1) % Math.max(1, loopLength)
@@ -85,7 +101,11 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
     if (!notes.length) return
     stepPointer = 0
     noteIndex = (pattern === 'random' && notes.length) ? Math.floor(Math.random() * notes.length) : 0
-    if (clock && typeof clock.start === 'function') { clock.start(); isPlaying = true }
+    isPlaying = true
+    events.emit('start', { stepIndex: stepPointer })
+    if (clock && typeof clock.start === 'function') {
+      clock.start()
+    }
   }
 
   function startAlignedTo(other:any){
@@ -100,15 +120,23 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
     }
 
     const delay = (other && typeof other.timeToNextTick === 'function') ? other.timeToNextTick() : 0
+    isPlaying = true
+    events.emit('start', { stepIndex: stepPointer })
     if (clock && typeof clock.startAlignedTo === 'function') clock.startAlignedTo(delay)
-    if (clock && typeof clock.start === 'function' && delay === 0) { clock.start(); isPlaying = true }
+    if (clock && typeof clock.start === 'function' && delay === 0) clock.start()
   }
 
   function timeToNextTick(){ return clock ? clock.timeToNextTick() : 0 }
 
   function getState(){ return { index: noteIndex, stepIndex: stepPointer, direction: scanDirection, pattern } }
 
-  function stop(){ if (clock && typeof clock.stop === 'function') { clock.stop(); isPlaying = false } }
+  function stop(){
+    if (clock && typeof clock.stop === 'function') {
+      clock.stop()
+      isPlaying = false
+      events.emit('stop', undefined as void)
+    }
+  }
 
   function setBpm(v:number){ if (clock && typeof clock.setBpm === 'function') clock.setBpm(v) }
   function setPattern(p:Pattern){ pattern = p }
@@ -117,5 +145,19 @@ export function createArpeggiator(sendNote: (note:number, vel:number, len:number
   function setSteps(s:number[]){ steps = s; stepPointer = 0 }
   function setSubdivision(n:number){ subdivision = Math.max(1, Math.min(64, Math.floor(n))); ensureClock() }
 
-  return { start, startAlignedTo, stop, setBpm, setPattern, setNotes, setNoteLength, setSteps, getState, timeToNextTick, setLoopLength, setSubdivision }
+  function on<EventName extends keyof ArpeggiatorEvents>(
+    eventName: EventName,
+    handler: (payload: ArpeggiatorEvents[EventName]) => void
+  ) {
+    return events.on(eventName, handler)
+  }
+
+  function off<EventName extends keyof ArpeggiatorEvents>(
+    eventName: EventName,
+    handler: (payload: ArpeggiatorEvents[EventName]) => void
+  ) {
+    return events.off(eventName, handler)
+  }
+
+  return { start, startAlignedTo, stop, setBpm, setPattern, setNotes, setNoteLength, setSteps, getState, timeToNextTick, setLoopLength, setSubdivision, on, off }
 }

@@ -1,4 +1,4 @@
-import { reactive, Ref } from 'vue'
+import { markRaw, reactive, Ref } from 'vue'
 import { createArpeggiator, Pattern } from './arpeggiator'
 import { sendNote } from '../midi/midi'
 import { DEFAULT_NOTES, DEFAULT_STEPS, DEFAULT_BASE, DEFAULT_BPM, DEFAULT_NOTE_LENGTH, DEFAULT_QUANT } from '../config'
@@ -15,13 +15,15 @@ export interface Channel {
   base: number
   loopLength: number
   quantisation: number
-  arpeggiator: ReturnType<typeof createArpeggiator> | any
+  arpeggiator: ReturnType<typeof createArpeggiator>
   color: string
   active: boolean
+  playStep: number | null
 }
 
 export function createChannel(index: number, selectedOutputId: Ref<string | null>, log: Ref<string[]>) : Channel {
   const palette = ['#f28b82','#fbbc04','#fff475','#ccff90','#a7ffeb','#cbf0f8','#aecbfa','#d7aefb']
+  const arpeggiator = markRaw(createArpeggiator())
   const channel = reactive({
     id: index,
     name: `Ch ${index+1}`,
@@ -34,29 +36,46 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     base: DEFAULT_BASE,
     loopLength: DEFAULT_STEPS.length,
     quantisation: DEFAULT_QUANT,
-    arpeggiator: null as any,
+    arpeggiator,
     color: palette[index % palette.length],
-    active: false
+    active: false,
+    playStep: null as number | null
   }) as Channel
 
-  channel.arpeggiator = createArpeggiator((note, vel, len) => {
+  arpeggiator.on('note', (payload) => {
+    const { note, velocity, length } = payload
     const outputId = selectedOutputId.value
-    if (outputId) sendNote(outputId, note, vel, len)
-    log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${vel} len=${len}`)
-    // flash the channel button while the note sounds
+    if (outputId) sendNote(outputId, note, velocity, length)
+    log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${velocity} len=${length}`)
     channel.active = true
-    const timeoutMs = Math.max(len || channel.noteLength || 120, 120)
+    const timeoutMs = Math.max(length || channel.noteLength || 120, 120)
     setTimeout(() => { channel.active = false }, timeoutMs)
   })
 
-  channel.arpeggiator.setBpm(channel.bpm)
-  channel.arpeggiator.setPattern(channel.pattern)
-  channel.arpeggiator.setNoteLength(channel.noteLength)
-  channel.arpeggiator.setNotes(channel.notes)
+  arpeggiator.on('tick', (payload) => {
+    const { stepIndex } = payload
+    channel.playStep = stepIndex
+  })
+
+  arpeggiator.on('start', (payload) => {
+    const { stepIndex } = payload
+    channel.playing = true
+    channel.playStep = stepIndex
+  })
+
+  arpeggiator.on('stop', () => {
+    channel.playing = false
+    channel.playStep = null
+  })
+
+  arpeggiator.setBpm(channel.bpm)
+  arpeggiator.setPattern(channel.pattern)
+  arpeggiator.setNoteLength(channel.noteLength)
+  arpeggiator.setNotes(channel.notes)
   // ensure arpeggiator knows about the initial loop length before setting steps
-  if (typeof channel.arpeggiator.setLoopLength === 'function') channel.arpeggiator.setLoopLength(channel.loopLength)
-  channel.arpeggiator.setSteps(channel.steps)
+  if (typeof arpeggiator.setLoopLength === 'function') arpeggiator.setLoopLength(channel.loopLength)
+  arpeggiator.setSteps(channel.steps)
   // apply initial quantisation to arpeggiator
-  if (typeof channel.arpeggiator.setSubdivision === 'function') channel.arpeggiator.setSubdivision(channel.quantisation)
+  if (typeof arpeggiator.setSubdivision === 'function') arpeggiator.setSubdivision(channel.quantisation)
   return channel
 }

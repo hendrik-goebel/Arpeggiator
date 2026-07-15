@@ -27,11 +27,11 @@ export function useChannels() {
   function toggleGlobalPlay(){
     if (globalPlaying.value) {
       // stop all channels
-      channels.forEach(channel => { if (channel.playing) { channel.arpeggiator.stop(); channel.playing = false } })
+      channels.forEach(channel => { if (channel.playing) channel.arpeggiator.stop() })
       globalPlaying.value = false
     } else {
       // start all channels
-      channels.forEach(channel => { if (!channel.playing) { channel.arpeggiator.start(); channel.playing = true } })
+      channels.forEach(channel => { if (!channel.playing) channel.arpeggiator.start() })
       globalPlaying.value = true
     }
   }
@@ -56,7 +56,7 @@ export function useChannels() {
   function toggleChannelPlay(index:number){
     const channel = channels[index]
     if (channel.playing) {
-      channel.arpeggiator.stop(); channel.playing = false
+      channel.arpeggiator.stop()
     } else {
       // if any other channel is playing, align this channel's first note to them
       const referenceChannel = channels.find(c => c.playing && c !== channel)
@@ -65,13 +65,12 @@ export function useChannels() {
       } else {
         channel.arpeggiator.start()
       }
-      channel.playing = true
     }
   }
 
   function togglePlay(){
     const channel = currentChannel.value
-    if (channel.playing) { channel.arpeggiator.stop(); channel.playing = false }
+    if (channel.playing) { channel.arpeggiator.stop() }
     else {
       const referenceChannel = channels.find(c => c.playing && c !== channel)
       if (referenceChannel && typeof channel.arpeggiator.startAlignedTo === 'function') {
@@ -79,7 +78,6 @@ export function useChannels() {
       } else {
         channel.arpeggiator.start()
       }
-      channel.playing = true
     }
   }
 
