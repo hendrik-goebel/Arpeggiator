@@ -24,14 +24,27 @@ export function createMidiClock(initialBpm: number, onTick: () => void, subdivis
     }
 
     // fallback
-    ;(fallback as any).startAlignedTo(delayMs || 0)
+    if (typeof (fallback as any).startAlignedTo === 'function') {
+      try { (fallback as any).startAlignedTo(delayMs || 0) } catch (e) {}
+    } else if (typeof (fallback as any).start === 'function') {
+      // best-effort: start immediately or after delay if provided
+      if (delayMs && delayMs > 0) {
+        setTimeout(() => { try { (fallback as any).start() } catch (e) {} }, delayMs)
+      } else {
+        try { (fallback as any).start() } catch (e) {}
+      }
+    }
     // if module loads later, switch over using async/await
     (async () => {
       try {
         const ready = await worklet.ensureWorkletModule()
         if (!isPlaying || !ready) return
         try { fallback.stop() } catch (e) {}
-        worklet.startAlignedTo(delayMs || 0)
+        if (typeof (worklet as any).startAlignedTo === 'function') {
+          try { (worklet as any).startAlignedTo(delayMs || 0) } catch (e) {}
+        } else if (typeof (worklet as any).start === 'function') {
+          try { (worklet as any).start() } catch (e) {}
+        }
         isUsingWorklet = true
       } catch (e) {}
     })()
