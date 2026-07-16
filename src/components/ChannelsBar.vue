@@ -8,12 +8,15 @@
           ch.playing ? 'Stop' : 'Start'
         }}
       </button>
+      <label class="tempo-control">Tempo
+        <span><input type="number" :value="ch.bpm" :disabled="syncActive" min="20" max="300" @input="$emit('update-bpm', i, +$event.target.value)" /><small>BPM</small></span>
+      </label>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ channels: any[], currentIndex: number }>()
+const props = defineProps<{ channels: any[], currentIndex: number, syncActive: boolean }>()
 </script>
 
 <style scoped>
@@ -52,5 +55,31 @@ const props = defineProps<{ channels: any[], currentIndex: number }>()
   background: #1d544d;
   color: #dffff9;
 }
+
+.tempo-control {
+  display: grid;
+  gap: .25rem;
+  padding: .45rem .55rem .55rem;
+  border-top: 1px solid #30424d;
+  color: #667d89;
+  font-size: .5rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+.tempo-control span { display: flex; align-items: center; }
+.tempo-control input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid #3d5b68;
+  border-radius: 0;
+  background: transparent;
+  color: #d8e3ea;
+  font: 700 .75rem ui-monospace, monospace;
+  outline: 0;
+}
+.tempo-control input:focus { border-color: #63e6cf; }
+.tempo-control input:disabled { color: #5a6b74; }
+.tempo-control small { margin-left: .3rem; color: #63e6cf; font-size: .5rem; }
 
 </style>

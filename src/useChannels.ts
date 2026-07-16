@@ -169,14 +169,10 @@ export function useChannels() {
 
   watch(selectedOutputId, (id) => { if (id) selectOutput(id) })
 
-  function updateBpm(bpm:number){
-    if (syncChannels.value) {
-      // update the global BPM and apply to all running clocks; do not change channel BPM fields
-      globalBpm.value = bpm
-      channels.forEach(channel => { channel.arpeggiator.setBpm(bpm) })
-    } else {
-      currentChannel.value.arpeggiator.setBpm(bpm); currentChannel.value.bpm = bpm
-    }
+  function updateChannelBpm(index:number, bpm:number) {
+    const channel = channels[index]
+    channel.arpeggiator.setBpm(bpm)
+    channel.bpm = bpm
   }
   function updatePattern(pattern:any){ currentChannel.value.arpeggiator.setPattern(pattern); currentChannel.value.pattern = pattern }
   function updateNoteLength(length:number){ currentChannel.value.arpeggiator.setNoteLength(length); currentChannel.value.noteLength = length }
@@ -223,7 +219,7 @@ export function useChannels() {
     selectedOutputId,
     enableMidi,
     log,
-    updateBpm,
+    updateChannelBpm,
     updatePattern,
     updateNoteLength,
     updateQuantisation,

@@ -18,7 +18,6 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
     <div class="controls">
       <div class="control-column">
         <h3>PERFORMANCE</h3>
-        <label>Tempo <span class="value-input"><input type="number" :value="channel.bpm" @input="$emit('update-bpm', +$event.target.value)" min="20" max="300" /><small>BPM</small></span></label>
         <label>Note length <span class="value-input"><input type="number" :value="channel.noteLength" @input="$emit('update-noteLength', +$event.target.value)" min="50" max="2000" /><small>MS</small></span></label>
       </div>
       <div class="control-column">

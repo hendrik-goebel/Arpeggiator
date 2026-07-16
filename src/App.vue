@@ -1,25 +1,9 @@
 <template>
   <main class="instrument">
-    <header class="instrument-header">
-      <div>
-        <p class="eyebrow">POLYPHONIC SEQUENCE ENGINE</p>
-        <h1>ARPEGGIATOR <span>01</span></h1>
-      </div>
-      <div class="status-light"><i></i> MIDI READY</div>
-    </header>
-
-    <section class="module channel-module">
-      <div class="module-heading">
-        <span class="module-index">01</span>
-        <h2>CHANNELS</h2>
-      </div>
-      <ChannelsBar :channels="channels" :currentIndex="currentIndex" @select="selectChannel" @toggle="toggleChannelPlay" />
-    </section>
 
     <section class="global-controls module">
       <div class="module-heading">
-        <span class="module-index">02</span>
-        <h2>MASTER CLOCK</h2>
+        <h2> </h2>
       </div>
       <div class="master-control">
         <label>GLOBAL TEMPO
@@ -30,9 +14,15 @@
       </div>
     </section>
 
+
+    <section class="module channel-module">
+      <ChannelsBar :channels="channels" :currentIndex="currentIndex" :sync-active="syncChannels" @select="selectChannel" @toggle="toggleChannelPlay" @update-bpm="updateChannelBpm" />
+    </section>
+
+
     <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log" :synthEnabled="synthEnabled"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
-      @select-output="(id)=>{ selectedOutputId = id }" @update-bpm="updateBpm" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
+      @select-output="(id)=>{ selectedOutputId = id }" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
       @toggle-synth="toggleSynth" />
   </main>
 </template>
@@ -64,7 +54,7 @@ const {
   selectedOutputId,
   enableMidi,
   log,
-  updateBpm,
+  updateChannelBpm,
   updatePattern,
   updateNoteLength,
   updateLoopLength,
