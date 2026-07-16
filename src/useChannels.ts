@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import { initMidi, listOutputs, selectOutput, sendNote } from './midi/midi'
+import { initMidi, listOutputs, selectOutput, sendNote, enableSineSynth, disableSineSynth } from './midi/midi'
 import { createChannel } from './models/channel'
 import { CHANNEL_COUNT, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, STEP_COUNT } from './config'
 import { MIDI } from './midi/constants'
@@ -8,6 +8,7 @@ export function useChannels() {
   const log = ref<string[]>([])
   const outputs = ref<{id:string,name:string}[]>([])
   const selectedOutputId = ref<string | null>(null)
+  const synthEnabled = ref(false)
 
   const channels = Array.from({length: CHANNEL_COUNT}, (_, index)=> createChannel(index, selectedOutputId, log))
   const currentIndex = ref(0)
@@ -154,6 +155,18 @@ export function useChannels() {
     if (outputs.value.length) selectedOutputId.value = outputs.value[0].id
   }
 
+  function toggleSynth() {
+    if (synthEnabled.value) {
+      disableSineSynth()
+      synthEnabled.value = false
+    } else {
+      enableSineSynth()
+      synthEnabled.value = true
+    }
+    outputs.value = listOutputs()
+    if (outputs.value.length && !selectedOutputId.value) selectedOutputId.value = outputs.value[0].id
+  }
+
   watch(selectedOutputId, (id) => { if (id) selectOutput(id) })
 
   function updateBpm(bpm:number){
@@ -214,6 +227,8 @@ export function useChannels() {
     updatePattern,
     updateNoteLength,
     updateQuantisation,
-    updateLoopLength
+    updateLoopLength,
+    synthEnabled,
+    toggleSynth
   }
 }

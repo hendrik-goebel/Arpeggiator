@@ -11,9 +11,10 @@
       <button @click="toggleGlobalPlay">{{ globalPlaying ? 'Stop All' : 'Start All' }}</button>
     </div>
 
-    <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log"
+    <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log" :synthEnabled="synthEnabled"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
-      @select-output="(id)=>{ selectedOutputId = id }" @update-bpm="updateBpm" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation" />
+      @select-output="(id)=>{ selectedOutputId = id }" @update-bpm="updateBpm" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
+      @toggle-synth="toggleSynth" />
   </div>
 </template>
 
@@ -48,7 +49,9 @@ const {
   updatePattern,
   updateNoteLength,
   updateLoopLength,
-  updateQuantisation
+  updateQuantisation,
+  synthEnabled,
+  toggleSynth
 } = useChannels()
 
 function handleKeydown(event: KeyboardEvent) {

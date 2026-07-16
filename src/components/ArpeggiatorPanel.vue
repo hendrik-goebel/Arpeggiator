@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import StepsGrid from './StepsGrid.vue'
 import LogPanel from './LogPanel.vue'
 import { DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE } from '../config'
-const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
+const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[], synthEnabled: boolean }>()
 
 const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
 const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
@@ -33,6 +33,7 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
       </label>
       <button @click="$emit('toggle-play')">{{ channel.playing ? 'Stop' : 'Play' }}</button>
       <button @click="$emit('enable-midi')">Enable MIDI</button>
+      <button @click="$emit('toggle-synth')">{{ props.synthEnabled ? 'Synth: On' : 'Synth: Off' }}</button>
       <button @click="$emit('clear-notes')">Clear All</button>
       <label>Output:
         <select :value="selectedOutputId" @change="$emit('select-output', $event.target.value)">

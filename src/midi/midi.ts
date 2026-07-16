@@ -3,9 +3,20 @@ import { MIDI } from './constants'
 let midiAccess: WebMidi.MIDIAccess | null = null
 let selectedOutput: WebMidi.MIDIOutput | null = null
 
+const VIRTUAL_OUTPUTS = [{ id: '__sine__', name: 'Sine Synth (internal)' }]
+let sineSynthEnabled = false
+let audioContext: AudioContext | null = null
+
 function clampMidiValue(value: number) {
   const n = Math.floor(Number(value) || 0)
   return Math.max(0, Math.min(127, n))
+}
+
+function ensureAudio() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+  }
+  return audioContext
 }
 
 export async function initMidi() {
@@ -16,14 +27,25 @@ export async function initMidi() {
   throw new Error('Web MIDI API not supported')
 }
 
+export function enableSineSynth() {
+  sineSynthEnabled = true
+  ensureAudio()
+}
+export function disableSineSynth() { sineSynthEnabled = false }
+
 export function listOutputs() {
-  if (!midiAccess) return []
   const outs: {id:string,name:string}[] = []
+  if (sineSynthEnabled) outs.push(...VIRTUAL_OUTPUTS)
+  if (!midiAccess) return outs
   midiAccess.outputs.forEach((o:any)=> outs.push({id: o.id, name: o.name || o.manufacturer || o.id}))
   return outs
 }
 
 export function selectOutput(id:string) {
+  if (id === VIRTUAL_OUTPUTS[0].id) {
+    selectedOutput = null
+    return null
+  }
   if (!midiAccess) return null
   const out = midiAccess.outputs.get(id)
   selectedOutput = out ?? null
@@ -31,6 +53,11 @@ export function selectOutput(id:string) {
 }
 
 export function sendNote(outputId:string, note:number, velocity:number, lengthMs:number) {
+  if (outputId === VIRTUAL_OUTPUTS[0].id && sineSynthEnabled) {
+    playSine(note, velocity, lengthMs)
+    return
+  }
+
   if (!midiAccess) return
   const out = midiAccess.outputs.get(outputId)
   if (!out) return
@@ -39,6 +66,29 @@ export function sendNote(outputId:string, note:number, velocity:number, lengthMs
   console.log(`[midi-note-on] output=${outputId} note=${safeNote} velocity=${safeVelocity} time=${new Date().toISOString()}`)
   out.send([MIDI.NOTE_ON, safeNote, safeVelocity])
   setTimeout(()=> out.send([MIDI.NOTE_OFF, safeNote, MIDI.DEFAULT_OFF_VELOCITY]), lengthMs)
+}
+
+function playSine(note:number, velocity:number, lengthMs:number) {
+  const ctx = ensureAudio()
+  const now = ctx.currentTime
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  const freq = 440 * Math.pow(2, (note - 69) / 12)
+  osc.type = 'sine'
+  try { osc.frequency.value = freq } catch (e) {}
+  const vel = Math.max(0, Math.min(127, Math.floor(Number(velocity) || 0)))
+  const amp = (vel / 127) * 0.2
+  gain.gain.setValueAtTime(amp, now)
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.start(now)
+  const stopTime = now + Math.max(0.02, lengthMs / 1000)
+  gain.gain.linearRampToValueAtTime(0.0001, stopTime)
+  osc.stop(stopTime + 0.02)
+  setTimeout(() => {
+    try { osc.disconnect(); gain.disconnect() } catch (e) {}
+  }, lengthMs + 200)
+  console.log(`[sine-note] note=${note} freq=${freq.toFixed(2)} vel=${velocity} len=${lengthMs} time=${new Date().toISOString()}`)
 }
 
 export function sendRaw(note:number, velocity:number, lengthMs:number) {
