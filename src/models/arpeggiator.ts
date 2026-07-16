@@ -48,8 +48,6 @@ export function createArpeggiator() {
   }
 
   function ensureClock() {
-    // recreate clock with current subdivision value
-    if (clock && typeof clock.stop === 'function') clock.stop()
     clock = createMidiClock(bpm, tick, subdivision)
     if (isPlaying && clock && typeof clock.start === 'function') clock.start()
   }
@@ -64,7 +62,6 @@ export function createArpeggiator() {
       steps = steps.slice(0, loopLength)
     }
     stepPointer = stepPointer % Math.max(1, loopLength)
-    ensureClock()
   }
 
   function tick() {
@@ -144,13 +141,30 @@ export function createArpeggiator() {
     if (clock && typeof clock.setBpm === 'function') clock.setBpm(v)
   }
   function setPattern(p:Pattern){ pattern = p }
-  function setNotes(n:number[]){ notes = n; noteIndex = (pattern === 'random' && n.length) ? Math.floor(Math.random() * n.length) : 0; scanDirection = 1 }
+  function setNotes(n:number[]){
+    const currentNote = notes[noteIndex]
+    notes = n
+
+    if (!notes.length) {
+      noteIndex = 0
+      scanDirection = 1
+      return
+    }
+
+    const currentNoteIndex = currentNote === undefined ? -1 : notes.indexOf(currentNote)
+    noteIndex = currentNoteIndex >= 0
+      ? currentNoteIndex
+      : Math.min(noteIndex, notes.length - 1)
+  }
   function setNoteLength(ms:number){ noteLength = ms }
-  function setSteps(s:number[]){ steps = s; stepPointer = 0 }
+  function setSteps(s:number){
+    steps = s
+    stepPointer = stepPointer % Math.max(1, steps.length || loopLength)
+  }
   function setSubdivision(n:number){
     const quantisation = Math.max(1, Math.min(64, Math.floor(n)))
     subdivision = quantisation / 4
-    ensureClock()
+    if (clock && typeof clock.setSubdivision === 'function') clock.setSubdivision(subdivision)
   }
 
   function on<EventName extends keyof ArpeggiatorEvents>(

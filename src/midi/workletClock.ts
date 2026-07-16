@@ -84,6 +84,11 @@ export function createWorkletClock(initialBpm: number, onTick: () => void, subdi
     postToWorklet({ type: 'setBpm', bpm: v * subdivision })
   }
 
+  function setSubdivision(v: number) {
+    subdivision = v
+    postToWorklet({ type: 'setBpm', bpm: beatsPerMinute * subdivision })
+  }
+
   function timeToNextTick() {
     // Worklet reports near-zero; keep simple
     if (!audioWorkletNode || !audioContext) return 0
@@ -94,5 +99,5 @@ export function createWorkletClock(initialBpm: number, onTick: () => void, subdi
     return { bpm: beatsPerMinute, lastTickAt: lastTickTimestamp }
   }
 
-  return { ensureWorkletModule, start, startAlignedTo, stop, setBpm, timeToNextTick, getState }
+  return { ensureWorkletModule, start, startAlignedTo, stop, setBpm, setSubdivision, timeToNextTick, getState }
 }

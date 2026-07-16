@@ -67,6 +67,11 @@ export function createMidiClock(initialBpm: number, onTick: () => void, subdivis
     try { worklet.setBpm(v) } catch (e) {}
   }
 
+  function setSubdivision(v: number) {
+    try { fallback.setSubdivision(v) } catch (e) {}
+    try { worklet.setSubdivision(v) } catch (e) {}
+  }
+
   function timeToNextTick() {
     try {
       if (isUsingWorklet) return worklet.timeToNextTick()
@@ -78,5 +83,5 @@ export function createMidiClock(initialBpm: number, onTick: () => void, subdivis
     try { return isUsingWorklet ? worklet.getState() : fallback.getState() } catch (e) { return { bpm: initialBpm, lastTickAt: 0 } }
   }
 
-  return { start, startAlignedTo, stop, setBpm, timeToNextTick, getState }
+  return { start, startAlignedTo, stop, setBpm, setSubdivision, timeToNextTick, getState }
 }

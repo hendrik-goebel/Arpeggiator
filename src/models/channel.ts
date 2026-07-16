@@ -46,7 +46,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     const { note, velocity, length } = payload
     const outputId = selectedOutputId.value
     console.log(`[note-start] ${channel.name} note=${note} velocity=${velocity} length=${length} time=${new Date().toISOString()}`)
-    if (outputId) sendNote(outputId, note, velocity, length)
+    if (outputId) sendNote(outputId, note, velocity, length, channel.id)
     log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${velocity} len=${length}`)
     const timeoutMs = Math.max(length || channel.noteLength || 120, 120)
     setTimeout(() => { channel.active = false }, timeoutMs)

@@ -4,8 +4,9 @@ export function createTickProcessor(initialBpm: number, onTick: () => void, subd
   let isPlaying = false
   let fallbackSchedulerTimer: any = null
   let lastTickTimestamp = 0
+  let pendingSubdivision: number | null = null
 
-  const getIntervalMs = () => (60000 / (beatsPerMinute * subdivision))
+  const getIntervalMs = () => (60000 / (beatsPerMinute * (pendingSubdivision ?? subdivision)))
   const nowMs = () => (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now()
 
   // Fallback perf-based scheduler (drift-correcting)
@@ -20,6 +21,7 @@ export function createTickProcessor(initialBpm: number, onTick: () => void, subd
       lastTickTimestamp = Date.now()
       onTick()
       if (pendingBeatsPerMinute != null) { beatsPerMinute = pendingBeatsPerMinute; pendingBeatsPerMinute = null }
+      if (pendingSubdivision != null) { subdivision = pendingSubdivision; pendingSubdivision = null }
       nextScheduledTickPerf += getIntervalMs()
       safety++
     }
@@ -53,6 +55,11 @@ export function createTickProcessor(initialBpm: number, onTick: () => void, subd
     pendingBeatsPerMinute = v
   }
 
+  function setSubdivision(v: number) {
+    if (!isPlaying) { subdivision = v; return }
+    pendingSubdivision = v
+  }
+
   function timeToNextTick() {
     if (!isPlaying) return 0
     return Math.max(0, (nextScheduledTickPerf || 0) - nowMs())
@@ -62,5 +69,5 @@ export function createTickProcessor(initialBpm: number, onTick: () => void, subd
     return { bpm: beatsPerMinute, lastTickAt: lastTickTimestamp }
   }
 
-  return { start, startAlignedTo, stop, setBpm, timeToNextTick, getState }
+  return { start, startAlignedTo, stop, setBpm, setSubdivision, timeToNextTick, getState }
 }

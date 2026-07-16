@@ -1,4 +1,4 @@
-import { MIDI } from './constants'
+import { MIDI, noteOffStatus, noteOnStatus } from './constants'
 
 let midiAccess: WebMidi.MIDIAccess | null = null
 let selectedOutput: WebMidi.MIDIOutput | null = null
@@ -52,7 +52,7 @@ export function selectOutput(id:string) {
   return selectedOutput
 }
 
-export function sendNote(outputId:string, note:number, velocity:number, lengthMs:number) {
+export function sendNote(outputId:string, note:number, velocity:number, lengthMs:number, channel = 0) {
   if (outputId === VIRTUAL_OUTPUTS[0].id && sineSynthEnabled) {
     playSine(note, velocity, lengthMs)
     return
@@ -63,9 +63,10 @@ export function sendNote(outputId:string, note:number, velocity:number, lengthMs
   if (!out) return
   const safeNote = clampMidiValue(note)
   const safeVelocity = clampMidiValue(velocity)
-  console.log(`[midi-note-on] output=${outputId} note=${safeNote} velocity=${safeVelocity} time=${new Date().toISOString()}`)
-  out.send([MIDI.NOTE_ON, safeNote, safeVelocity])
-  setTimeout(()=> out.send([MIDI.NOTE_OFF, safeNote, MIDI.DEFAULT_OFF_VELOCITY]), lengthMs)
+  const safeChannel = Math.max(0, Math.min(15, Math.floor(channel)))
+  console.log(`[midi-note-on] output=${outputId} channel=${safeChannel + 1} note=${safeNote} velocity=${safeVelocity} time=${new Date().toISOString()}`)
+  out.send([noteOnStatus(safeChannel), safeNote, safeVelocity])
+  setTimeout(()=> out.send([noteOffStatus(safeChannel), safeNote, MIDI.DEFAULT_OFF_VELOCITY]), lengthMs)
 }
 
 function playSine(note:number, velocity:number, lengthMs:number) {
@@ -91,11 +92,12 @@ function playSine(note:number, velocity:number, lengthMs:number) {
   console.log(`[sine-note] note=${note} freq=${freq.toFixed(2)} vel=${velocity} len=${lengthMs} time=${new Date().toISOString()}`)
 }
 
-export function sendRaw(note:number, velocity:number, lengthMs:number) {
+export function sendRaw(note:number, velocity:number, lengthMs:number, channel = 0) {
   if (!selectedOutput) return
   const safeNote = clampMidiValue(note)
   const safeVelocity = clampMidiValue(velocity)
-  console.log(`[midi-note-on] output=${selectedOutput.id} note=${safeNote} velocity=${safeVelocity} time=${new Date().toISOString()}`)
-  selectedOutput.send([MIDI.NOTE_ON, safeNote, safeVelocity])
-  setTimeout(()=> selectedOutput && selectedOutput.send([MIDI.NOTE_OFF, safeNote, MIDI.DEFAULT_OFF_VELOCITY]), lengthMs)
+  const safeChannel = Math.max(0, Math.min(15, Math.floor(channel)))
+  console.log(`[midi-note-on] output=${selectedOutput.id} channel=${safeChannel + 1} note=${safeNote} velocity=${safeVelocity} time=${new Date().toISOString()}`)
+  selectedOutput.send([noteOnStatus(safeChannel), safeNote, safeVelocity])
+  setTimeout(()=> selectedOutput && selectedOutput.send([noteOffStatus(safeChannel), safeNote, MIDI.DEFAULT_OFF_VELOCITY]), lengthMs)
 }

@@ -141,7 +141,7 @@ export function useChannels() {
     const channel = currentChannel.value
     const note = channel.base + offset
     const outputId = selectedOutputId.value
-    if (outputId) sendNote(outputId, note, MIDI.VELOCITY_MAX, channel.noteLength)
+    if (outputId) sendNote(outputId, note, MIDI.VELOCITY_MAX, channel.noteLength, channel.id)
 
     channel.active = true
     log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${MIDI.VELOCITY_MAX} len=${channel.noteLength}`)
