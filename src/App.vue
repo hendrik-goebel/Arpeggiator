@@ -1,21 +1,39 @@
 <template>
-  <div class="container">
-    <h1>Web Arpeggiator (Vue 3 + TS)</h1>
+  <main class="instrument">
+    <header class="instrument-header">
+      <div>
+        <p class="eyebrow">POLYPHONIC SEQUENCE ENGINE</p>
+        <h1>ARPEGGIATOR <span>01</span></h1>
+      </div>
+      <div class="status-light"><i></i> MIDI READY</div>
+    </header>
 
-    <ChannelsBar :channels="channels" :currentIndex="currentIndex" :syncActive="syncChannels" @select="selectChannel" @toggle="toggleChannelPlay" @toggle-sync="setSyncChannels(!syncChannels)" />
+    <section class="module channel-module">
+      <div class="module-heading">
+        <span class="module-index">01</span>
+        <h2>CHANNELS</h2>
+      </div>
+      <ChannelsBar :channels="channels" :currentIndex="currentIndex" :syncActive="syncChannels" @select="selectChannel" @toggle="toggleChannelPlay" @toggle-sync="setSyncChannels(!syncChannels)" />
+    </section>
 
-    <div class="global-controls">
-      <label>Global Tempo (BPM):
-        <input type="number" :value="globalBpm" @input="(e)=> setGlobalBpm(+e.target.value)" :disabled="!syncChannels" min="20" max="300" />
-      </label>
-      <button @click="toggleGlobalPlay">{{ globalPlaying ? 'Stop All' : 'Start All' }}</button>
-    </div>
+    <section class="global-controls module">
+      <div class="module-heading">
+        <span class="module-index">02</span>
+        <h2>MASTER CLOCK</h2>
+      </div>
+      <div class="master-control">
+        <label>GLOBAL TEMPO
+          <span class="input-wrap"><input type="number" :value="globalBpm" @input="(e)=> setGlobalBpm(+e.target.value)" :disabled="!syncChannels" min="20" max="300" /><small>BPM</small></span>
+        </label>
+        <button class="master-play" @click="toggleGlobalPlay">{{ globalPlaying ? 'Stop All' : 'Start All' }}</button>
+      </div>
+    </section>
 
     <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log" :synthEnabled="synthEnabled"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
       @select-output="(id)=>{ selectedOutputId = id }" @update-bpm="updateBpm" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
       @toggle-synth="toggleSynth" />
-  </div>
+  </main>
 </template>
 
 <script setup lang="ts">
@@ -71,5 +89,65 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 </script>
 
 <style scoped>
-.container { padding: 1rem; font-family: system-ui, sans-serif }
+.instrument {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 2rem auto;
+  color: #d8e3ea;
+}
+
+.instrument-header, .module-heading, .master-control {
+  display: flex;
+  align-items: center;
+}
+
+.instrument-header {
+  justify-content: space-between;
+  margin: 0 0 1.25rem;
+  padding: 0 .25rem;
+}
+
+.eyebrow, h1, h2 { margin: 0; }
+.eyebrow { color: #6f8190; font-size: .65rem; font-weight: 800; letter-spacing: .18em; }
+h1 { margin-top: .2rem; color: #f3fbff; font-size: clamp(1.7rem, 4vw, 2.5rem); letter-spacing: .08em; }
+h1 span { color: #63e6cf; font-weight: 400; }
+.status-light { color: #91a3ae; font-size: .65rem; font-weight: 700; letter-spacing: .12em; }
+.status-light i { display: inline-block; width: .5rem; height: .5rem; margin-right: .4rem; border-radius: 50%; background: #63e6cf; box-shadow: 0 0 12px #63e6cf; }
+
+.module {
+  border: 1px solid #263642;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #17222b, #10181f);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .22), inset 0 1px rgba(255, 255, 255, .035);
+}
+
+.channel-module { padding: 1rem; margin-bottom: 1rem; }
+.module-heading { gap: .7rem; margin-bottom: .85rem; }
+.module-index { color: #63e6cf; font-family: monospace; font-size: .7rem; }
+h2 { color: #91a3ae; font-size: .7rem; letter-spacing: .16em; }
+
+.global-controls {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.global-controls .module-heading { margin: 0; }
+.master-control { gap: 1.2rem; }
+.master-control label { color: #83939f; font-size: .62rem; font-weight: 800; letter-spacing: .13em; }
+.input-wrap { display: flex; align-items: center; margin-top: .3rem; }
+.master-control input {
+  width: 4rem; padding: .35rem .1rem; border: 0; border-bottom: 1px solid #3d5b68;
+  background: transparent; color: #f3fbff; font: 700 1.1rem ui-monospace, monospace; outline: 0;
+}
+.master-control small { margin-left: .4rem; color: #63e6cf; font-size: .58rem; }
+.master-play {
+  border: 1px solid #63e6cf; border-radius: 5px; padding: .7rem 1rem; background: #1e504b;
+  color: #dffff9; font-size: .65rem; font-weight: 800; letter-spacing: .1em; cursor: pointer;
+}
+
+@media (max-width: 650px) {
+  .instrument { width: min(100% - 1rem, 1180px); margin-top: 1rem; }
+  .instrument-header, .global-controls { align-items: flex-start; flex-direction: column; gap: 1rem; }
+  .global-controls { padding: 1rem; }
+}
 </style>

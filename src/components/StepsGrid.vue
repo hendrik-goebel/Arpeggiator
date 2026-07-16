@@ -34,12 +34,13 @@ function noteName(n:number){
 </script>
 
 <style scoped>
-.steps-grid { display: inline-block; border: 1px solid #ddd; padding: 6px; border-radius: 6px }
+.steps-grid { display: inline-block; min-width: 100%; border: 1px solid #2b3a45; padding: 7px; border-radius: 6px; background: #0c141a; }
 .row { display: flex; align-items: center }
-.note-col { width: 96px; padding: 8px; border-right: 1px solid #eee; cursor: pointer; font-weight:600 }
-.header-cell { background: #f7f7f7; font-weight:700 }
-.step-col { width: 36px; height: 36px; margin: 6px; background: #fff; border:1px solid #ccc; border-radius:4px; cursor:pointer }
-.step-col.active { background: #4caf50; border-color: #388e3c }
-.step-col.playing { box-shadow: 0 0 0 3px rgba(25,118,210,0.08); border-color: #1976d2 }
-.header-cell.playing { background: #e3f2fd }
+.note-col { width: 72px; padding: 8px; border-right: 1px solid #2b3a45; color: #a9bac4; cursor: pointer; font: 700 .68rem ui-monospace, monospace; }
+.header-cell { color: #62737e; font-size: .65rem; font-weight: 700; }
+.step-col { width: 34px; height: 30px; margin: 4px; border: 1px solid #2a3a45; border-radius: 3px; background: #142028; cursor: pointer; transition: background .12s, box-shadow .12s; }
+.step-col:hover { border-color: #63e6cf; }
+.step-col.active { border-color: #57cdb9; background: linear-gradient(145deg, #52cdb8, #287f77); box-shadow: inset 0 1px rgba(255,255,255,.3), 0 0 8px rgba(99,230,207,.18); }
+.step-col.playing { box-shadow: 0 0 0 2px #ffbc6d; border-color: #ffbc6d; }
+.header-cell.playing { color: #ffbc6d; }
 </style>

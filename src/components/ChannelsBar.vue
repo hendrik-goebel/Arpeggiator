@@ -20,35 +20,40 @@ const props = defineProps<{ channels: any[], currentIndex: number, syncActive?: 
 <style scoped>
 .channels {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  align-items: center
+  gap: .6rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .channel {
   display: flex;
-  gap: 0.25rem
+  gap: .25rem;
+  border: 1px solid #30424d;
+  border-radius: 5px;
+  overflow: hidden;
 }
 
-.ch-select {
-  min-width: 56px
-}
+.ch-select, .channel button, .sync-toggle { border: 0; padding: .6rem .7rem; background: #111b22; color: #91a3ae; font-size: .63rem; font-weight: 800; letter-spacing: .06em; cursor: pointer; }
+.ch-select { min-width: 70px; }
+.channel button:not(.ch-select) { border-left: 1px solid #30424d; }
 
 .channel.selected .ch-select {
-  font-weight: 700
+  color: #061010 !important;
+  font-weight: 800;
 }
 
 .channel button.playing {
-  background: #8ef08e
+  background: #1d544d;
+  color: #dffff9;
 }
 
 .sync-toggle {
-  padding: 0.25rem 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 4px
+  border: 1px solid #30424d;
+  border-radius: 5px;
 }
 
 .sync-toggle.active {
-  background: #8ef08e
+  border-color: #63e6cf;
+  color: #63e6cf;
 }
 </style>
