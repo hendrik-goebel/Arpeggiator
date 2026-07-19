@@ -82,6 +82,7 @@ export function useChannels() {
       channel.steps = channel.steps.map((stepValue:any)=> (stepValue === note ? -1 : stepValue))
     }
     channel.arpeggiator.setNotes(channel.notes)
+    channel.arpeggiator.setSteps(channel.steps)
   }
 
   function cycleStep(payload:any){
@@ -109,8 +110,14 @@ export function useChannels() {
     const { step, note } = payload
     const newSteps = channel.steps.slice()
     if (newSteps[step] === note) newSteps[step] = -1
-    else newSteps[step] = note
+    else {
+      newSteps[step] = note
+      if (!channel.notes.includes(note)) {
+        channel.notes = [...channel.notes, note].sort((a, b) => a - b)
+      }
+    }
     channel.steps = newSteps
+    channel.arpeggiator.setNotes(channel.notes)
     channel.arpeggiator.setSteps(channel.steps)
   }
 
@@ -147,10 +154,18 @@ export function useChannels() {
 
     channel.base = DEFAULT_BASE
     channel.notes = [...new Set(selected)].sort((a, b) => a - b)
-    channel.steps = Array.from(
-      { length: channel.loopLength },
-      (_, step) => notes[step % notes.length]
-    )
+    const previousSteps = channel.steps.slice(0, channel.loopLength)
+    const hasRhythm = previousSteps.length > 0
+    const activeSteps = hasRhythm
+      ? previousSteps.map(step => typeof step === 'number' && step >= 0)
+      : Array.from({ length: channel.loopLength }, () => true)
+    let notePosition = 0
+    channel.steps = activeSteps.map(isActive => {
+      if (!isActive) return -1
+      const note = notes[notePosition % notes.length]
+      notePosition++
+      return note
+    })
     channel.arpeggiator.setNotes(channel.notes)
     channel.arpeggiator.setSteps(channel.steps)
   }
