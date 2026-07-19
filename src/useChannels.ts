@@ -2,7 +2,8 @@ import { ref, computed, watch } from 'vue'
 import { initMidi, listOutputs, listInputs, getOutput, getInput, selectOutput, sendNote, enableSineSynth, disableSineSynth, SINE_OUTPUT_ID } from './midi/midi'
 import { createMidiClockInput, createMidiClockOutput } from './midi/clockSync'
 import { createChannel } from './models/channel'
-import { CHANNEL_COUNT, DEFAULT_BASE, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds } from './config'
+import { isSustainedStep, Pattern, stepNotes, StepValue } from './models/arpeggiator'
+import { CHANNEL_COUNT, CHORD_NOTE_CHANGE_PROBABILITY, DEFAULT_BASE, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds } from './config'
 import { MIDI } from './midi/constants'
 
 export function useChannels() {
@@ -109,7 +110,13 @@ export function useChannels() {
     } else {
       channel.notes = channel.notes.filter((x:any)=>x!==note)
       // replace any matching step note values with -1 (rest)
-      channel.steps = channel.steps.map((stepValue:any)=> (stepValue === note ? -1 : stepValue))
+      channel.steps = channel.steps.map((stepValue): StepValue => {
+        if (stepValue === note) return -1
+        const remaining = stepNotes(stepValue).filter(stepNote => stepNote !== note)
+        if (remaining.length === 0) return -1
+        if (isSustainedStep(stepValue)) return { notes: remaining.length === 1 ? remaining[0] : remaining, duration: stepValue.duration }
+        return remaining.length === 1 ? remaining[0] : remaining
+      })
     }
     channel.arpeggiator.setNotes(channel.notes)
     channel.arpeggiator.setSteps(channel.steps)
@@ -123,9 +130,9 @@ export function useChannels() {
       const stepIndex = payload
       const noteCount = channel.notes.length
       if (noteCount === 0) { channel.steps[stepIndex] = -1; channel.arpeggiator.setSteps(channel.steps); return }
-      let current = channel.steps[stepIndex]
+      const current = channel.steps[stepIndex]
       // if current is a MIDI note, find its index among channel.notes
-      let idx = channel.notes.indexOf(current)
+      let idx = typeof current === 'number' ? channel.notes.indexOf(current) : -1
       if (idx === -1) idx = -1
       idx = idx + 1
       if (idx >= noteCount) {
@@ -137,9 +144,47 @@ export function useChannels() {
       return
     }
 
-    const { step, note } = payload
+    const { step, note, add = false } = payload
     const newSteps = channel.steps.slice()
-    if (newSteps[step] === note) newSteps[step] = -1
+    if (add) {
+      const current = newSteps[step]
+      let sustainSourceIndex = -1
+      for (let sourceStep = step - 1; sourceStep >= 0; sourceStep--) {
+        const source = newSteps[sourceStep]
+        if (isSustainedStep(source) &&
+            sourceStep + source.duration >= step &&
+            stepNotes(source).includes(note)) {
+          sustainSourceIndex = sourceStep
+          break
+        }
+      }
+      const previous = newSteps[step - 1]
+      const extendsAdjacentNote = current === -1 &&
+        (sustainSourceIndex >= 0 || stepNotes(previous).includes(note))
+
+      if (extendsAdjacentNote) {
+        if (sustainSourceIndex >= 0) {
+          const source = newSteps[sustainSourceIndex]
+          if (isSustainedStep(source)) {
+            source.duration = Math.max(source.duration, step - sustainSourceIndex + 1)
+          }
+        } else if (isSustainedStep(previous)) {
+          previous.duration = Math.max(previous.duration, 2)
+        } else {
+          newSteps[step - 1] = { notes: previous, duration: 2 }
+        }
+      } else {
+        const chord = Array.isArray(current) ? current.slice() : (typeof current === 'number' && current >= 0 ? [current] : [])
+        const noteIndex = chord.indexOf(note)
+        if (noteIndex >= 0) chord.splice(noteIndex, 1)
+        else chord.push(note)
+        chord.sort((a, b) => a - b)
+        newSteps[step] = chord.length === 0 ? -1 : chord.length === 1 ? chord[0] : chord
+        if (chord.length > 0 && !channel.notes.includes(note)) {
+          channel.notes = [...channel.notes, note].sort((a, b) => a - b)
+        }
+      }
+    } else if (newSteps[step] === note) newSteps[step] = -1
     else {
       newSteps[step] = note
       if (!channel.notes.includes(note)) {
@@ -187,15 +232,36 @@ export function useChannels() {
     const previousSteps = channel.steps.slice(0, channel.loopLength)
     const hasRhythm = previousSteps.length > 0
     const activeSteps = hasRhythm
-      ? previousSteps.map(step => typeof step === 'number' && step >= 0)
+      ? previousSteps.map(step => (typeof step === 'number' && step >= 0) || (Array.isArray(step) && step.length > 0))
       : Array.from({ length: channel.loopLength }, () => true)
     let notePosition = 0
-    channel.steps = activeSteps.map(isActive => {
+    const variedSteps = activeSteps.map((isActive, stepIndex) => {
       if (!isActive) return -1
+      const previousStep = previousSteps[stepIndex]
+      if (Array.isArray(previousStep)) {
+        const variedChord: number[] = []
+        previousStep.forEach(note => {
+          const shouldChange = !keyPitches.includes(note) || Math.random() < CHORD_NOTE_CHANGE_PROBABILITY
+          if (!shouldChange) {
+            variedChord.push(note)
+            return
+          }
+
+          const candidates = keyPitches.filter(candidate => candidate !== note && !variedChord.includes(candidate))
+          variedChord.push(candidates.length
+            ? candidates[Math.floor(Math.random() * candidates.length)]
+            : note)
+        })
+        return [...new Set(variedChord)].sort((a, b) => a - b)
+      }
+
       const note = notes[notePosition % notes.length]
       notePosition++
       return note
     })
+    channel.steps = variedSteps
+    const chordNotes = variedSteps.flatMap(step => Array.isArray(step) ? step : [])
+    channel.notes = [...new Set([...channel.notes, ...chordNotes])].sort((a, b) => a - b)
     channel.arpeggiator.setNotes(channel.notes)
     channel.arpeggiator.setSteps(channel.steps)
   }

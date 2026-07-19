@@ -4,6 +4,21 @@ import { MIDI } from '../midi/constants'
 import { createEventEmitter } from '../utils/eventEmitter'
 
 export type Pattern = 'up'|'down'|'updown'|'random'
+export type SustainedStep = { notes: number | number[], duration: number }
+export type StepValue = number | number[] | SustainedStep
+
+export function isSustainedStep(value: StepValue | undefined): value is SustainedStep {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) &&
+    'notes' in value && 'duration' in value
+}
+
+export function stepNotes(value: StepValue | undefined): number[] {
+  if (typeof value === 'number') return value >= 0 ? [value] : []
+  if (Array.isArray(value)) return value
+  return isSustainedStep(value)
+    ? (Array.isArray(value.notes) ? value.notes : [value.notes])
+    : []
+}
 
 export type ArpeggiatorEvents = {
   tick: { stepIndex: number, noteIndex: number, pattern: Pattern }
@@ -21,7 +36,7 @@ export function createArpeggiator() {
   let noteIndex = 0
   let stepPointer = 0
   let scanDirection = 1
-  let steps: number[] = [] // MIDI note numbers or -1 for rest
+  let steps: StepValue[] = [] // MIDI note numbers, chords, or -1 for rest
   let loopLength = STEP_COUNT
   let clock: any = null
   let isPlaying = false
@@ -77,16 +92,12 @@ export function createArpeggiator() {
 
     events.emit('tick', { stepIndex: currentStep, noteIndex: noteIndex, pattern })
 
-    if (Array.isArray(stepValue)) {
-      // chord: play all notes
-      stepValue.forEach((n:any)=>{
-        if (typeof n === 'number' && n >= 0) {
-          events.emit('note', { note: n, velocity: MIDI.VELOCITY_MAX, length: getNoteLengthMilliseconds() })
-        }
+    const notesForStep = stepNotes(stepValue)
+    const duration = isSustainedStep(stepValue) ? Math.max(1, stepValue.duration) : 1
+    if (notesForStep.length) {
+      notesForStep.forEach((note) => {
+        events.emit('note', { note, velocity: MIDI.VELOCITY_MAX, length: getNoteLengthMilliseconds() * duration })
       })
-    } else if (typeof stepValue === 'number' && stepValue >= 0) {
-      // single MIDI note
-      events.emit('note', { note: stepValue, velocity: MIDI.VELOCITY_MAX, length: getNoteLengthMilliseconds() })
     }
 
     // advance pointers
@@ -161,7 +172,7 @@ export function createArpeggiator() {
       : Math.min(noteIndex, notes.length - 1)
   }
   function setNoteLength(ms:number){ noteLength = ms }
-  function setSteps(s:number){
+  function setSteps(s: StepValue[]){
     steps = s
     stepPointer = stepPointer % Math.max(1, steps.length || loopLength)
   }

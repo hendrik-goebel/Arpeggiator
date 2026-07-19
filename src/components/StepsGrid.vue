@@ -8,8 +8,8 @@
     <div v-for="(note, noteIndex) in notes" :key="note" class="row" :class="{ 'in-key': isKeyNote(note) }">
       <div class="note-col" @click="$emit('toggle-note', note)">{{ noteName(note) }}</div>
       <div v-for="stepIndex in stepCountArray" :key="stepIndex-1" class="step-col"
-           :class="{active: steps && steps[stepIndex-1] === note, playing: props.playStep === (stepIndex-1)}"
-           @click="$emit('toggle-step', { step: stepIndex-1, note })"></div>
+           :class="{active: isStepActive(stepIndex - 1, note), sustained: isSustainedSource(stepIndex - 1, note), 'sustain-continuation': isSustainedContinuation(stepIndex - 1, note), playing: props.playStep === (stepIndex-1)}"
+           @click="toggleStep(stepIndex - 1, note, $event)"></div>
     </div>
   </div>
 </template>
@@ -17,8 +17,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_NAMES, OCTAVE_OFFSET, DEFAULT_BASE, MAJOR_SCALE_OFFSETS } from '../config'
+import { isSustainedStep, StepValue, stepNotes } from '../models/arpeggiator'
 
-const props = defineProps<{ notes: number[], steps: number[] | undefined, base?: number, keyRoot?: string, playStep?: number, stepCount?: number }>()
+const props = defineProps<{ notes: number[], steps: StepValue[] | undefined, base?: number, keyRoot?: string, playStep?: number, stepCount?: number }>()
+
+const emit = defineEmits<{
+  (event: 'toggle-note', note: number): void
+  (event: 'toggle-step', payload: { step: number, note: number, add: boolean }): void
+}>()
 
 const base = props.base ?? DEFAULT_BASE
 const keyPitchClass = computed(() => CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === props.keyRoot)?.pitchClass ?? 0)
@@ -37,6 +43,35 @@ function noteName(n:number){
 function isKeyNote(note: number) {
   return keyPitchClasses.value.has(note % 12)
 }
+
+function isStepActive(step: number, note: number) {
+  const value = props.steps?.[step]
+  if (stepNotes(value).includes(note)) return true
+  return props.steps?.some((candidate, sourceStep) =>
+    sourceStep < step &&
+    isSustainedStep(candidate) &&
+    sourceStep + candidate.duration > step &&
+    stepNotes(candidate).includes(note)
+  ) ?? false
+}
+
+function isSustainedSource(step: number, note: number) {
+  const value = props.steps?.[step]
+  return isSustainedStep(value) && stepNotes(value).includes(note)
+}
+
+function isSustainedContinuation(step: number, note: number) {
+  return props.steps?.some((candidate, sourceStep) =>
+    sourceStep < step &&
+    isSustainedStep(candidate) &&
+    sourceStep + candidate.duration > step &&
+    stepNotes(candidate).includes(note)
+  ) ?? false
+}
+
+function toggleStep(step: number, note: number, event: MouseEvent) {
+  emit('toggle-step', { step, note, add: event.shiftKey })
+}
 </script>
 
 <style scoped>
@@ -48,6 +83,8 @@ function isKeyNote(note: number) {
 .step-col { width: 34px; height: 30px; margin: 4px; border: 1px solid var(--line); border-radius: 3px; background: #14232b; cursor: pointer; transition: background .12s, border-color .16s ease, box-shadow .22s ease, transform .16s ease; }
 .step-col:hover { border-color: var(--teal); }
 .step-col.active { border-color: var(--teal); background: linear-gradient(145deg, #5ccdbb, #28786f); box-shadow: inset 0 1px rgba(255,255,255,.3), 0 0 8px rgba(104,216,195,.18); }
+.step-col.sustained { border-color: var(--gold); background: linear-gradient(145deg, #d8b66c, #876b2c); box-shadow: inset 0 1px rgba(255,255,255,.3), 0 0 8px rgba(216,182,108,.22); }
+.step-col.sustain-continuation { border-left-color: var(--gold); border-right-color: var(--gold); background: linear-gradient(90deg, rgba(216,182,108,.5), rgba(216,182,108,.18)); }
 .step-col.playing { box-shadow: 0 0 0 2px var(--lavender), 0 0 12px rgba(181, 185, 239, .3); border-color: var(--lavender); transform: scale(1.04); animation: step-note-pulse .45s ease-out; }
 .header-cell.playing { color: var(--lavender); text-shadow: 0 0 8px rgba(181, 185, 239, .55); }
 

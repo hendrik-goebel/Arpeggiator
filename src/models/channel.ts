@@ -1,5 +1,5 @@
 import { markRaw, reactive, Ref } from 'vue'
-import { createArpeggiator, Pattern } from './arpeggiator'
+import { createArpeggiator, Pattern, StepValue } from './arpeggiator'
 import { sendNote } from '../midi/midi'
 import { DEFAULT_NOTES, DEFAULT_STEPS, DEFAULT_BASE, DEFAULT_BPM, DEFAULT_NOTE_LENGTH, DEFAULT_QUANT, CircleOfFifthsKey } from '../config'
 
@@ -12,7 +12,7 @@ export interface Channel {
   noteLength: number
   playing: boolean
   notes: number[]
-  steps: number[]
+  steps: StepValue[]
   base: number
   loopLength: number
   arpeggioLength: number
@@ -36,7 +36,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     noteLength: DEFAULT_NOTE_LENGTH,
     playing: false,
     notes: DEFAULT_NOTES.slice() as number[],
-    steps: DEFAULT_STEPS.slice() as number[],
+    steps: DEFAULT_STEPS.slice() as StepValue[],
     base: DEFAULT_BASE,
     loopLength: DEFAULT_STEPS.length,
     arpeggioLength: 4,
