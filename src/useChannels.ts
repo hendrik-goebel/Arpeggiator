@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { initMidi, listOutputs, selectOutput, sendNote, enableSineSynth, disableSineSynth, SINE_OUTPUT_ID } from './midi/midi'
 import { createChannel } from './models/channel'
-import { CHANNEL_COUNT, DEFAULT_BASE, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, CircleOfFifthsKey } from './config'
+import { CHANNEL_COUNT, DEFAULT_BASE, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds } from './config'
 import { MIDI } from './midi/constants'
 
 export function useChannels() {
@@ -179,6 +179,28 @@ export function useChannels() {
     channels.forEach((_, index) => createVariation(index))
   }
 
+  function initializeRandomState() {
+    const patterns: Pattern[] = ['up', 'down', 'updown', 'random']
+    const quantisations = [3, 4, 6, 8, 16]
+    const randomBpm = 80 + Math.floor(Math.random() * 51)
+    const randomKey = CIRCLE_OF_FIFTHS_KEYS[Math.floor(Math.random() * CIRCLE_OF_FIFTHS_KEYS.length)]
+
+    setGlobalBpm(randomBpm)
+    updateGlobalKey(randomKey.name)
+    channels.forEach(channel => {
+      const pattern = patterns[Math.floor(Math.random() * patterns.length)]
+      const quantisation = quantisations[Math.floor(Math.random() * quantisations.length)]
+      const noteLength = NOTE_LENGTH_OPTIONS[Math.floor(Math.random() * NOTE_LENGTH_OPTIONS.length)]
+      channel.pattern = pattern
+      channel.quantisation = quantisation
+      channel.noteLength = noteLength
+      channel.arpeggiator.setPattern(pattern)
+      channel.arpeggiator.setSubdivision(quantisation)
+      channel.arpeggiator.setNoteLength(noteLength)
+    })
+    createGlobalVariation()
+  }
+
   function playKeyboardNote(key: string) {
     const offset = KEYBOARD_NOTE_OFFSETS[key.toLowerCase()]
     if (offset === undefined) return false
@@ -186,11 +208,12 @@ export function useChannels() {
     const channel = currentChannel.value
     const note = channel.base + offset
     const outputId = selectedOutputId.value
-    if (outputId) sendNote(outputId, note, MIDI.VELOCITY_MAX, channel.noteLength, channel.midiChannel - 1)
+    const noteLengthMilliseconds = noteLengthToMilliseconds(channel.noteLength, channel.bpm)
+    if (outputId) sendNote(outputId, note, MIDI.VELOCITY_MAX, noteLengthMilliseconds, channel.midiChannel - 1)
 
     channel.active = true
-    log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${MIDI.VELOCITY_MAX} len=${channel.noteLength}`)
-    setTimeout(() => { channel.active = false }, Math.max(channel.noteLength, 120))
+    log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${MIDI.VELOCITY_MAX} len=${noteLengthMilliseconds}`)
+    setTimeout(() => { channel.active = false }, Math.max(noteLengthMilliseconds, 120))
     return true
   }
 
@@ -254,6 +277,8 @@ export function useChannels() {
     channel.quantisation = newQ
     if (typeof channel.arpeggiator.setSubdivision === 'function') channel.arpeggiator.setSubdivision(newQ)
   }
+
+  initializeRandomState()
 
   return {
     channels,

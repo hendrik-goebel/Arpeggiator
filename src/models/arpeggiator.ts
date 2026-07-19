@@ -1,4 +1,4 @@
-import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH, STEP_COUNT, DEFAULT_QUANT } from '../config'
+import { DEFAULT_BPM, DEFAULT_NOTE_LENGTH, STEP_COUNT, DEFAULT_QUANT, noteLengthToMilliseconds } from '../config'
 import { createMidiClock } from './midiClock'
 import { MIDI } from '../midi/constants'
 import { createEventEmitter } from '../utils/eventEmitter'
@@ -47,6 +47,10 @@ export function createArpeggiator() {
     }
   }
 
+  function getNoteLengthMilliseconds() {
+    return noteLengthToMilliseconds(noteLength, bpm)
+  }
+
   function ensureClock() {
     clock = createMidiClock(bpm, tick, subdivision)
     if (isPlaying && clock && typeof clock.start === 'function') clock.start()
@@ -77,12 +81,12 @@ export function createArpeggiator() {
       // chord: play all notes
       stepValue.forEach((n:any)=>{
         if (typeof n === 'number' && n >= 0) {
-          events.emit('note', { note: n, velocity: MIDI.VELOCITY_MAX, length: noteLength })
+          events.emit('note', { note: n, velocity: MIDI.VELOCITY_MAX, length: getNoteLengthMilliseconds() })
         }
       })
     } else if (typeof stepValue === 'number' && stepValue >= 0) {
       // single MIDI note
-      events.emit('note', { note: stepValue, velocity: MIDI.VELOCITY_MAX, length: noteLength })
+      events.emit('note', { note: stepValue, velocity: MIDI.VELOCITY_MAX, length: getNoteLengthMilliseconds() })
     }
 
     // advance pointers

@@ -1,5 +1,11 @@
 export const DEFAULT_BPM = 120
-export const DEFAULT_NOTE_LENGTH = 200
+export const NOTE_LENGTH_OPTIONS = [1, 2, 4, 3, 8, 16, 32, 64] as const
+export const DEFAULT_NOTE_LENGTH = 4
+export function noteLengthToMilliseconds(denominator: number, bpm: number) {
+  const safeDenominator = Math.max(1, Number(denominator) || 1)
+  const safeBpm = Math.max(1, Number(bpm) || DEFAULT_BPM)
+  return (60000 * 4) / (safeBpm * safeDenominator)
+}
 export const DEFAULT_QUANT = 4
 export const CHANNEL_COUNT = 8
 export const STEP_COUNT = 16
