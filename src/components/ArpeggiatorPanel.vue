@@ -6,7 +6,7 @@ import StepperControl from './StepperControl.vue'
 import { ARPEGGIO_OCTAVES, CIRCLE_OF_FIFTHS_KEYS, DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey } from '../config'
 import { StoredArpeggiatorState } from '../models/channel'
 
-const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[], globalKey: CircleOfFifthsKey, storedStates: StoredArpeggiatorState[], activeStoredStateIndex: number | null }>()
+const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[], globalKey: CircleOfFifthsKey, storedStates: (StoredArpeggiatorState | null)[], activeStoredStateIndex: number | null }>()
 
 const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
 const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
@@ -44,13 +44,13 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
     </div>
     <div class="state-storage">
       <button class="store-button" @click="$emit('store-state')">Store state</button>
-      <div class="stored-states" v-if="storedStates.length">
+      <div class="stored-states">
         <button
           v-for="(_, index) in storedStates"
           :key="index"
           class="stored-state-button"
-          :class="{ active: index === activeStoredStateIndex }"
-          :aria-label="`Apply stored state ${index + 1}`"
+          :class="{ active: index === activeStoredStateIndex, empty: !storedStates[index] }"
+          :aria-label="`${storedStates[index] ? 'Apply' : 'Select'} stored state ${index + 1}`"
           @click="$emit('apply-stored-state', index)"
         >{{ index + 1 }}</button>
       </div>
@@ -114,6 +114,7 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
 .store-button { border-color: var(--teal); color: var(--teal-soft); background: var(--teal-deep); }
 .stored-states { display: flex; flex-wrap: wrap; gap: .35rem; }
 .stored-state-button { min-width: 2rem; color: var(--lavender-soft); background: var(--lavender-deep); }
+.stored-state-button.empty { border-style: dashed; color: #71828c; background: #152029; }
 .stored-state-button.active { border-color: var(--teal); background: var(--teal-deep); color: var(--teal-soft); box-shadow: 0 0 8px rgba(104, 216, 195, .28); }
 .section-label { display: flex; justify-content: space-between; margin: 0 0 .6rem; }
 .section-label span { color: #52636f; font-size: .55rem; }

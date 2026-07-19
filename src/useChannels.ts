@@ -3,7 +3,7 @@ import { initMidi, listOutputs, listInputs, getOutput, getInput, selectOutput, s
 import { createMidiClockInput, createMidiClockOutput } from './midi/clockSync'
 import { createChannel, StoredArpeggiatorState } from './models/channel'
 import { isSustainedStep, Pattern, stepNotes, StepValue } from './models/arpeggiator'
-import { ARPEGGIO_OCTAVES, CHANNEL_COUNT, CHORD_NOTE_CHANGE_PROBABILITY, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds } from './config'
+import { ARPEGGIO_OCTAVES, CHANNEL_COUNT, CHORD_NOTE_CHANGE_PROBABILITY, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds, STORED_STATE_COUNT } from './config'
 import { MIDI } from './midi/constants'
 
 export function useChannels() {
@@ -13,9 +13,11 @@ export function useChannels() {
   const channels = Array.from({length: CHANNEL_COUNT}, (_, index)=> createChannel(index, selectedOutputId, log))
   const currentIndex = ref(0)
   const currentChannel = computed(() => channels[currentIndex.value])
-  const storedStates = ref<StoredArpeggiatorState[][]>(channels.map(() => []))
+  const storedStates = ref<(StoredArpeggiatorState | null)[][]>(
+    channels.map(() => Array.from({ length: STORED_STATE_COUNT }, () => null))
+  )
   const currentStoredStates = computed(() => storedStates.value[currentIndex.value])
-  const activeStoredStateIndexes = ref<(number | null)[]>(channels.map(() => null))
+  const activeStoredStateIndexes = ref<(number | null)[]>(channels.map(() => 0))
   const currentActiveStoredStateIndex = computed(() => activeStoredStateIndexes.value[currentIndex.value])
 
   const globalBpm = ref(DEFAULT_BPM)
@@ -312,6 +314,9 @@ export function useChannels() {
       channel.arpeggiator.setNoteLength(noteLength)
     })
     createGlobalVariation()
+    channels.forEach((channel, index) => {
+      storedStates.value[index][0] = snapshotChannelState(channel)
+    })
   }
 
   function playKeyboardNote(key: string) {
@@ -430,9 +435,8 @@ export function useChannels() {
     return Array.isArray(step) ? step.slice() : step
   }
 
-  function storeCurrentState() {
-    const channel = currentChannel.value
-    storedStates.value[currentIndex.value].push({
+  function snapshotChannelState(channel: typeof channels[number]): StoredArpeggiatorState {
+    return {
       bpm: channel.bpm,
       tempoOffset: channel.tempoOffset,
       pattern: channel.pattern,
@@ -445,11 +449,18 @@ export function useChannels() {
       arpeggioLength: channel.arpeggioLength,
       quantisation: channel.quantisation,
       key: channel.key
-    })
+    }
+  }
+
+  function storeCurrentState() {
+    const channelIndex = currentIndex.value
+    const selectedIndex = activeStoredStateIndexes.value[channelIndex] ?? 0
+    storedStates.value[channelIndex][selectedIndex] = snapshotChannelState(currentChannel.value)
   }
 
   function applyStoredState(index: number) {
     const state = storedStates.value[currentIndex.value][index]
+    activeStoredStateIndexes.value[currentIndex.value] = index
     if (!state) return
 
     const channel = currentChannel.value
@@ -473,7 +484,6 @@ export function useChannels() {
     channel.arpeggiator.setLoopLength(channel.loopLength)
     channel.arpeggiator.setSubdivision(channel.quantisation)
     channel.arpeggiator.setSteps(channel.steps)
-    activeStoredStateIndexes.value[currentIndex.value] = index
   }
 
   function copyChannel(sourceIndex: number, targetIndex: number) {
