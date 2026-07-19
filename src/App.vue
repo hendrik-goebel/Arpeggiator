@@ -10,6 +10,18 @@
           <span class="input-wrap"><input type="number" :value="globalBpm" @input="(e)=> setGlobalBpm(+e.target.value)" min="20" max="300" /><small>BPM</small></span>
         </label>
         <button class="master-play" @click="toggleGlobalPlay">{{ globalPlaying ? 'Stop All' : 'Start All' }}</button>
+        <label class="clock-control">CLOCK OUT
+          <select :value="clockOutputId" @change="setClockOutput($event.target.value || null)">
+            <option value="">Off</option>
+            <option v-for="output in clockOutputs" :key="output.id" :value="output.id">{{ output.name }}</option>
+          </select>
+        </label>
+        <label class="clock-control">CLOCK IN
+          <select :value="clockInputId" @change="setClockInput($event.target.value || null)">
+            <option value="">Off</option>
+            <option v-for="input in clockInputs" :key="input.id" :value="input.id">{{ input.name }}</option>
+          </select>
+        </label>
       </div>
     </section>
 
@@ -56,6 +68,12 @@ const {
   playKeyboardNote,
   outputs,
   selectedOutputId,
+  clockOutputs,
+  clockInputs,
+  clockOutputId,
+  clockInputId,
+  setClockOutput,
+  setClockInput,
   enableMidi,
   log,
   updateChannelBpm,
@@ -69,6 +87,7 @@ const {
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.repeat) return
+  if (!event.getModifierState('CapsLock')) return
 
   const target = event.target
   if (target instanceof HTMLElement &&
@@ -145,6 +164,8 @@ h2 { color: var(--text-muted); font-size: .7rem; letter-spacing: .16em; }
   border: 1px solid var(--teal); border-radius: 5px; padding: .7rem 1rem; background: var(--teal-deep);
   color: var(--teal-soft); font-size: .65rem; font-weight: 800; letter-spacing: .1em; cursor: pointer;
 }
+.clock-control { display: grid; gap: .3rem; color: var(--text-muted); font-size: .55rem; font-weight: 800; letter-spacing: .1em; }
+.clock-control select { max-width: 10rem; border: 1px solid var(--line-strong); border-radius: 4px; padding: .35rem; background: var(--bg-control); color: var(--text); font-size: .65rem; }
 .master-stop {
   border: 1px solid var(--coral); border-radius: 5px; padding: .7rem 1rem; background: var(--coral-deep);
   color: var(--coral-soft); font-size: .65rem; font-weight: 800; letter-spacing: .1em; cursor: pointer;

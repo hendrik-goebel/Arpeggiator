@@ -1,5 +1,6 @@
 import { ref, computed, watch } from 'vue'
-import { initMidi, listOutputs, selectOutput, sendNote, enableSineSynth, disableSineSynth, SINE_OUTPUT_ID } from './midi/midi'
+import { initMidi, listOutputs, listInputs, getOutput, getInput, selectOutput, sendNote, enableSineSynth, disableSineSynth, SINE_OUTPUT_ID } from './midi/midi'
+import { createMidiClockInput, createMidiClockOutput } from './midi/clockSync'
 import { createChannel } from './models/channel'
 import { CHANNEL_COUNT, DEFAULT_BASE, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds } from './config'
 import { MIDI } from './midi/constants'
@@ -15,6 +16,18 @@ export function useChannels() {
   const globalBpm = ref(DEFAULT_BPM)
   const globalKey = ref<CircleOfFifthsKey>('C')
   const globalPlaying = ref(false)
+  const clockOutputs = ref<{id:string,name:string}[]>([])
+  const clockInputs = ref<{id:string,name:string}[]>([])
+  const clockOutputId = ref<string | null>(null)
+  const clockInputId = ref<string | null>(null)
+  const midiClockOutputEnabled = ref(false)
+  const midiClockInputEnabled = ref(false)
+  const midiClockOutput = createMidiClockOutput(globalBpm.value)
+  const midiClockInput = createMidiClockInput({
+    onTempo: (bpm) => setGlobalBpm(Math.round(bpm * 10) / 10),
+    onStart: () => { if (!globalPlaying.value) toggleGlobalPlay() },
+    onStop: () => { if (globalPlaying.value) stopAll() }
+  })
 
   function setGlobalBpm(bpm:number){
     globalBpm.value = bpm
@@ -22,6 +35,7 @@ export function useChannels() {
       channel.bpm = bpm + channel.tempoOffset
       channel.arpeggiator.setBpm(channel.bpm)
     })
+    midiClockOutput.setBpm(bpm)
   }
 
   function updateGlobalKey(key: string) {
@@ -30,21 +44,30 @@ export function useChannels() {
     channels.forEach(channel => { channel.key = globalKey.value })
   }
 
+  function syncMidiClockTransport() {
+    if (!midiClockOutputEnabled.value) return
+    if (channels.some(channel => channel.playing)) midiClockOutput.start()
+    else midiClockOutput.stop()
+  }
+
   function toggleGlobalPlay(){
     if (globalPlaying.value) {
       // stop all channels
       channels.forEach(channel => { if (channel.playing) channel.arpeggiator.stop() })
       globalPlaying.value = false
+      midiClockOutput.stop()
     } else {
       // start all channels
       channels.forEach(channel => { if (!channel.playing) channel.arpeggiator.start() })
       globalPlaying.value = true
+      syncMidiClockTransport()
     }
   }
 
   function stopAll() {
     channels.forEach(channel => channel.arpeggiator.stop())
     globalPlaying.value = false
+    midiClockOutput.stop()
   }
 
   function selectChannel(index:number){ currentIndex.value = index }
@@ -61,6 +84,7 @@ export function useChannels() {
         channel.arpeggiator.start()
       }
     }
+    syncMidiClockTransport()
   }
 
   function togglePlay(){
@@ -73,6 +97,7 @@ export function useChannels() {
       } else {
         channel.arpeggiator.start()
       }
+      syncMidiClockTransport()
     }
   }
 
@@ -221,6 +246,8 @@ export function useChannels() {
     outputs.value = listOutputs()
     await initMidi()
     outputs.value = listOutputs()
+    clockOutputs.value = outputs.value.filter(output => output.id !== SINE_OUTPUT_ID)
+    clockInputs.value = listInputs()
     if (outputs.value.length) selectedOutputId.value = outputs.value[0].id
   }
 
@@ -278,6 +305,20 @@ export function useChannels() {
     if (typeof channel.arpeggiator.setSubdivision === 'function') channel.arpeggiator.setSubdivision(newQ)
   }
 
+  function setClockOutput(id: string | null) {
+    clockOutputId.value = id
+    midiClockOutputEnabled.value = id !== null
+    midiClockOutput.setOutput(getOutput(id))
+    if (id === null) midiClockOutput.stop()
+    else if (globalPlaying.value) midiClockOutput.start()
+  }
+
+  function setClockInput(id: string | null) {
+    clockInputId.value = id
+    midiClockInputEnabled.value = id !== null
+    midiClockInput.setInput(getInput(id))
+  }
+
   initializeRandomState()
 
   return {
@@ -302,6 +343,12 @@ export function useChannels() {
     playKeyboardNote,
     outputs,
     selectedOutputId,
+    clockOutputs,
+    clockInputs,
+    clockOutputId,
+    clockInputId,
+    setClockOutput,
+    setClockInput,
     enableMidi,
     log,
     updateChannelBpm,

@@ -43,6 +43,27 @@ export function listOutputs() {
   return outs
 }
 
+export function listInputs() {
+  const inputs: {id:string,name:string}[] = []
+  if (midiAccess) {
+    midiAccess.inputs.forEach((input:any) => inputs.push({
+      id: input.id,
+      name: input.name || input.manufacturer || input.id
+    }))
+  }
+  return inputs
+}
+
+export function getOutput(id: string | null) {
+  if (!midiAccess || !id || id === SINE_OUTPUT_ID) return null
+  return midiAccess.outputs.get(id) ?? null
+}
+
+export function getInput(id: string | null) {
+  if (!midiAccess || !id) return null
+  return midiAccess.inputs.get(id) ?? null
+}
+
 export function selectOutput(id:string) {
   if (id === SINE_OUTPUT_ID) {
     selectedOutput = null

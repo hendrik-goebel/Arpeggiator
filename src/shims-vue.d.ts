@@ -12,7 +12,15 @@ declare namespace WebMidi {
     send(data: number[]): void
   }
 
+  interface MIDIInput {
+    id: string
+    name?: string
+    manufacturer?: string
+    onmidimessage: ((event: any) => void) | null
+  }
+
   interface MIDIAccess {
     outputs: Map<string, MIDIOutput>
+    inputs: Map<string, MIDIInput>
   }
 }
