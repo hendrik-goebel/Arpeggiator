@@ -1,4 +1,27 @@
-:root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color-scheme: dark; background: #091015; }
+:root {
+  --bg-deep: #091318;
+  --bg-panel: #101c24;
+  --bg-raised: #172630;
+  --bg-control: #0d171d;
+  --line: #29404a;
+  --line-strong: #45636b;
+  --text: #d8e6e8;
+  --text-muted: #91a6ab;
+  --text-dim: #667f86;
+  --teal: #68d8c3;
+  --teal-soft: #d9faf3;
+  --teal-deep: #1d4d49;
+  --coral: #c94f5e;
+  --coral-soft: #ffd4d8;
+  --coral-deep: #4a1d29;
+  --lavender: #b5b9ef;
+  --lavender-soft: #e5e4ff;
+  --lavender-deep: #303450;
+  --gold: #d8b66c;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color-scheme: dark;
+  background: var(--bg-deep);
+}
 * { box-sizing: border-box; }
-body { min-width: 320px; min-height: 100vh; margin: 0; background: radial-gradient(circle at 50% -20%, #243b47, transparent 40rem), #091015; }
+body { min-width: 320px; min-height: 100vh; margin: 0; background: radial-gradient(circle at 50% -20%, #29444c, transparent 40rem), var(--bg-deep); }
 button, input, select { font: inherit; }

@@ -39,8 +39,8 @@ function noteName(n: number) {
 .key {
   width: 64px;
   height: 64px;
-  background: #fff;
-  border: 1px solid #ccc;
+  background: #e4eeee;
+  border: 1px solid #a9c0c1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -49,7 +49,7 @@ function noteName(n: number) {
 }
 
 .key.active {
-  background: #ffd54f
+  background: var(--gold)
 }
 
 .label {

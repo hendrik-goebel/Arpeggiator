@@ -42,7 +42,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     midiChannel: index + 1,
     quantisation: DEFAULT_QUANT,
     arpeggiator,
-    color: '#f28b82',
+    color: '#c94f5e',
     active: false,
     playStep: null as number | null
   }) as Channel

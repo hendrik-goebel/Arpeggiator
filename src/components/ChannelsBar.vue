@@ -1,7 +1,7 @@
 <template>
   <div class="channels">
     <div v-for="(ch, i) in channels" :key="ch.id" class="channel" :class="{selected: i === currentIndex}">
-      <button @click="$emit('select', i)" class="ch-select" :style="{ background: ch.active ? ch.color : '' }">
+      <button @click="$emit('select', i)" class="ch-select" :class="{ active: ch.active }" :style="{ background: ch.active ? ch.color : '' }">
         {{ ch.name }}
       </button>
       <button @click.stop="$emit('toggle', i)" :class="{playing: ch.playing}">{{
@@ -32,38 +32,46 @@ defineProps<{ channels: any[], currentIndex: number }>()
 .channel {
   display: flex;
   flex-direction: column;
-  border: 1px solid #30424d;
+  border: 1px solid var(--line);
   border-radius: 5px;
   overflow: hidden;
   transition: border-color .15s, box-shadow .15s, transform .15s;
 }
 
-.ch-select, .channel button { border: 0; padding: .6rem .7rem; background: #111b22; color: #91a3ae; font-size: .63rem; font-weight: 800; letter-spacing: .06em; cursor: pointer; }
-.ch-select { min-width: 70px; }
-.channel button:not(.ch-select) { border-top: 1px solid #30424d; }
+.ch-select, .channel button { border: 0; padding: .6rem .7rem; background: var(--bg-panel); color: var(--text-muted); font-size: .63rem; font-weight: 800; letter-spacing: .06em; cursor: pointer; }
+.ch-select {
+  min-width: 70px;
+  transition: background-color .18s ease, color .18s ease, box-shadow .24s ease, transform .18s ease;
+}
+.ch-select.active {
+  box-shadow: 0 0 12px rgba(201, 79, 94, .42);
+  transform: translateY(-1px);
+  animation: channel-note-pulse .55s ease-out;
+}
+.channel button:not(.ch-select) { border-top: 1px solid var(--line); }
 
-.channel.selected .ch-select {
-  background: #cfdee5 !important;
-  color: #102028 !important;
+.channel.selected .ch-select:not(.active) {
+  background: var(--text);
+  color: var(--bg-deep) !important;
   font-weight: 800;
 }
 .channel.selected {
-  border-color: #6d9eaa;
-  box-shadow: 0 0 10px rgba(99, 230, 207, .2);
+  border-color: var(--line-strong);
+  box-shadow: 0 0 10px rgba(104, 216, 195, .18);
 }
-.channel.selected button:not(.ch-select) { border-top-color: #466773; }
+.channel.selected button:not(.ch-select) { border-top-color: var(--line-strong); }
 
 .channel button.playing {
-  background: #1d544d;
-  color: #dffff9;
+  background: var(--teal-deep);
+  color: var(--teal-soft);
 }
 
 .channel button.variation-button {
-  color: #d9b8ff;
+  color: var(--lavender);
 }
 
 .channel button.midi-channel-button {
-  color: #8fd3ff;
+  color: #9acbd0;
   font-size: .55rem;
 }
 
@@ -71,8 +79,8 @@ defineProps<{ channels: any[], currentIndex: number }>()
   display: grid;
   gap: .25rem;
   padding: .45rem .55rem .55rem;
-  border-top: 1px solid #30424d;
-  color: #667d89;
+  border-top: 1px solid var(--line);
+  color: var(--text-dim);
   font-size: .5rem;
   font-weight: 800;
   letter-spacing: .1em;
@@ -82,14 +90,25 @@ defineProps<{ channels: any[], currentIndex: number }>()
   width: 100%;
   min-width: 0;
   border: 0;
-  border-bottom: 1px solid #3d5b68;
+  border-bottom: 1px solid var(--line-strong);
   border-radius: 0;
   background: transparent;
-  color: #d8e3ea;
+  color: var(--text);
   font: 700 .75rem ui-monospace, monospace;
   outline: 0;
 }
-.tempo-control input:focus { border-color: #63e6cf; }
-.tempo-control small { margin-left: .3rem; color: #63e6cf; font-size: .5rem; }
+.tempo-control input:focus { border-color: var(--teal); }
+.tempo-control small { margin-left: .3rem; color: var(--teal); font-size: .5rem; }
+
+@keyframes channel-note-pulse {
+  0% { box-shadow: 0 0 0 rgba(201, 79, 94, 0); }
+  45% { box-shadow: 0 0 16px rgba(201, 79, 94, .58); }
+  100% { box-shadow: 0 0 12px rgba(201, 79, 94, .42); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-select { transition: none; }
+  .ch-select.active { animation: none; }
+}
 
 </style>
