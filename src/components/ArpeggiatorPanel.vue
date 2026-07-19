@@ -43,6 +43,7 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
       <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :key-root="channel.key" :play-step="channel.playStep" :step-count="channel.loopLength" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
     </div>
     <div class="state-storage">
+      <button class="variation-button" @click="$emit('channel-variation')">var</button>
       <button class="store-button" @click="$emit('store-state')">Store state</button>
       <div class="stored-states">
         <button
@@ -105,13 +106,19 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
 .utility-buttons button.active { border-color: var(--teal); color: var(--teal); }
 .utility-buttons .clear-button { color: var(--coral); }
 .sequencer { overflow-x: auto; }
-.state-storage { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin-top: .85rem; }
-.store-button, .stored-state-button {
+.state-storage {
+  display: flex; flex-wrap: wrap; gap: .45rem; align-items: center;
+  margin-top: .85rem; padding: 1rem;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--bg-raised);
+}
+.store-button, .variation-button, .stored-state-button {
   border: 1px solid var(--line-strong); border-radius: 4px; padding: .5rem .7rem;
   background: #1c2a33; color: var(--text-muted); font-size: .56rem; font-weight: 800;
   letter-spacing: .06em; cursor: pointer;
 }
 .store-button { border-color: var(--teal); color: var(--teal-soft); background: var(--teal-deep); }
+.variation-button { border-color: var(--lavender); color: var(--lavender); background: var(--lavender-deep); }
 .stored-states { display: flex; flex-wrap: wrap; gap: .35rem; }
 .stored-state-button { min-width: 2rem; color: var(--lavender-soft); background: var(--lavender-deep); }
 .stored-state-button.empty { border-style: dashed; color: #71828c; background: #152029; }

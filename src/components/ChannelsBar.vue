@@ -8,7 +8,6 @@
           ch.playing ? 'Stop' : 'Start'
         }}
       </button>
-      <button class="variation-button" @click.stop="$emit('variation', i)">var</button>
       <label class="key-control">Key
         <select :value="ch.key" @click.stop @change.stop="$emit('update-key', i, $event.target.value)">
           <option v-for="key in CIRCLE_OF_FIFTHS_KEYS" :key="key.name" :value="key.name">{{ key.name }}</option>
@@ -91,10 +90,6 @@ function dropOnChannel(targetIndex: number, event: DragEvent) {
 .channel button.playing {
   background: var(--teal-deep);
   color: var(--teal-soft);
-}
-
-.channel button.variation-button {
-  color: var(--lavender);
 }
 
 .key-control {
