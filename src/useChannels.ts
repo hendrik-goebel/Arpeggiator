@@ -174,12 +174,16 @@ export function useChannels() {
           newSteps[step - 1] = { notes: previous, duration: 2 }
         }
       } else {
-        const chord = Array.isArray(current) ? current.slice() : (typeof current === 'number' && current >= 0 ? [current] : [])
+        const chord = stepNotes(current).slice()
         const noteIndex = chord.indexOf(note)
         if (noteIndex >= 0) chord.splice(noteIndex, 1)
         else chord.push(note)
         chord.sort((a, b) => a - b)
-        newSteps[step] = chord.length === 0 ? -1 : chord.length === 1 ? chord[0] : chord
+        newSteps[step] = chord.length === 0
+          ? -1
+          : isSustainedStep(current)
+            ? { notes: chord.length === 1 ? chord[0] : chord, duration: current.duration }
+            : chord.length === 1 ? chord[0] : chord
         if (chord.length > 0 && !channel.notes.includes(note)) {
           channel.notes = [...channel.notes, note].sort((a, b) => a - b)
         }
