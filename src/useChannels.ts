@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { initMidi, listOutputs, listInputs, getOutput, getInput, selectOutput, sendNote, enableSineSynth, disableSineSynth, SINE_OUTPUT_ID } from './midi/midi'
 import { createMidiClockInput, createMidiClockOutput } from './midi/clockSync'
-import { createChannel } from './models/channel'
+import { createChannel, StoredArpeggiatorState } from './models/channel'
 import { isSustainedStep, Pattern, stepNotes, StepValue } from './models/arpeggiator'
 import { ARPEGGIO_OCTAVES, CHANNEL_COUNT, CHORD_NOTE_CHANGE_PROBABILITY, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds } from './config'
 import { MIDI } from './midi/constants'
@@ -13,6 +13,10 @@ export function useChannels() {
   const channels = Array.from({length: CHANNEL_COUNT}, (_, index)=> createChannel(index, selectedOutputId, log))
   const currentIndex = ref(0)
   const currentChannel = computed(() => channels[currentIndex.value])
+  const storedStates = ref<StoredArpeggiatorState[][]>(channels.map(() => []))
+  const currentStoredStates = computed(() => storedStates.value[currentIndex.value])
+  const activeStoredStateIndexes = ref<(number | null)[]>(channels.map(() => null))
+  const currentActiveStoredStateIndex = computed(() => activeStoredStateIndexes.value[currentIndex.value])
 
   const globalBpm = ref(DEFAULT_BPM)
   const globalKey = ref<CircleOfFifthsKey>('C')
@@ -416,20 +420,66 @@ export function useChannels() {
     channel.arpeggiator.setSteps(channel.steps)
   }
 
+  function cloneStep(step: StepValue): StepValue {
+    if (isSustainedStep(step)) {
+      return {
+        notes: Array.isArray(step.notes) ? step.notes.slice() : step.notes,
+        duration: step.duration
+      }
+    }
+    return Array.isArray(step) ? step.slice() : step
+  }
+
+  function storeCurrentState() {
+    const channel = currentChannel.value
+    storedStates.value[currentIndex.value].push({
+      bpm: channel.bpm,
+      tempoOffset: channel.tempoOffset,
+      pattern: channel.pattern,
+      noteLength: channel.noteLength,
+      notes: channel.notes.slice(),
+      steps: channel.steps.map(cloneStep),
+      base: channel.base,
+      octave: channel.octave,
+      loopLength: channel.loopLength,
+      arpeggioLength: channel.arpeggioLength,
+      quantisation: channel.quantisation,
+      key: channel.key
+    })
+  }
+
+  function applyStoredState(index: number) {
+    const state = storedStates.value[currentIndex.value][index]
+    if (!state) return
+
+    const channel = currentChannel.value
+    channel.bpm = state.bpm
+    channel.tempoOffset = state.tempoOffset
+    channel.pattern = state.pattern
+    channel.noteLength = state.noteLength
+    channel.notes = state.notes.slice()
+    channel.steps = state.steps.map(cloneStep)
+    channel.base = state.base
+    channel.octave = state.octave
+    channel.loopLength = state.loopLength
+    channel.arpeggioLength = state.arpeggioLength
+    channel.quantisation = state.quantisation
+    channel.key = state.key
+
+    channel.arpeggiator.setBpm(channel.bpm)
+    channel.arpeggiator.setPattern(channel.pattern)
+    channel.arpeggiator.setNoteLength(channel.noteLength)
+    channel.arpeggiator.setNotes(channel.notes)
+    channel.arpeggiator.setLoopLength(channel.loopLength)
+    channel.arpeggiator.setSubdivision(channel.quantisation)
+    channel.arpeggiator.setSteps(channel.steps)
+    activeStoredStateIndexes.value[currentIndex.value] = index
+  }
+
   function copyChannel(sourceIndex: number, targetIndex: number) {
     const source = channels[sourceIndex]
     const target = channels[targetIndex]
     if (!source || !target || source === target) return
-
-    const cloneStep = (step: StepValue): StepValue => {
-      if (isSustainedStep(step)) {
-        return {
-          notes: Array.isArray(step.notes) ? step.notes.slice() : step.notes,
-          duration: step.duration
-        }
-      }
-      return Array.isArray(step) ? step.slice() : step
-    }
 
     target.bpm = source.bpm
     target.tempoOffset = source.tempoOffset
@@ -512,6 +562,11 @@ export function useChannels() {
     updateQuantisation,
     updateLoopLength,
     updateArpeggioOctave,
+    storedStates,
+    currentStoredStates,
+    currentActiveStoredStateIndex,
+    storeCurrentState,
+    applyStoredState,
     copyChannel,
   }
 }

@@ -4,8 +4,9 @@ import StepsGrid from './StepsGrid.vue'
 import LogPanel from './LogPanel.vue'
 import StepperControl from './StepperControl.vue'
 import { ARPEGGIO_OCTAVES, CIRCLE_OF_FIFTHS_KEYS, DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey } from '../config'
+import { StoredArpeggiatorState } from '../models/channel'
 
-const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[], globalKey: CircleOfFifthsKey }>()
+const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[], globalKey: CircleOfFifthsKey, storedStates: StoredArpeggiatorState[], activeStoredStateIndex: number | null }>()
 
 const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
 const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
@@ -40,6 +41,19 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
 
     <div class="sequencer">
       <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :key-root="channel.key" :play-step="channel.playStep" :step-count="channel.loopLength" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
+    </div>
+    <div class="state-storage">
+      <button class="store-button" @click="$emit('store-state')">Store state</button>
+      <div class="stored-states" v-if="storedStates.length">
+        <button
+          v-for="(_, index) in storedStates"
+          :key="index"
+          class="stored-state-button"
+          :class="{ active: index === activeStoredStateIndex }"
+          :aria-label="`Apply stored state ${index + 1}`"
+          @click="$emit('apply-stored-state', index)"
+        >{{ index + 1 }}</button>
+      </div>
     </div>
     <div class="routing-section">
       <div class="control-column routing">
@@ -91,6 +105,16 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
 .utility-buttons button.active { border-color: var(--teal); color: var(--teal); }
 .utility-buttons .clear-button { color: var(--coral); }
 .sequencer { overflow-x: auto; }
+.state-storage { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin-top: .85rem; }
+.store-button, .stored-state-button {
+  border: 1px solid var(--line-strong); border-radius: 4px; padding: .5rem .7rem;
+  background: #1c2a33; color: var(--text-muted); font-size: .56rem; font-weight: 800;
+  letter-spacing: .06em; cursor: pointer;
+}
+.store-button { border-color: var(--teal); color: var(--teal-soft); background: var(--teal-deep); }
+.stored-states { display: flex; flex-wrap: wrap; gap: .35rem; }
+.stored-state-button { min-width: 2rem; color: var(--lavender-soft); background: var(--lavender-deep); }
+.stored-state-button.active { border-color: var(--teal); background: var(--teal-deep); color: var(--teal-soft); box-shadow: 0 0 8px rgba(104, 216, 195, .28); }
 .section-label { display: flex; justify-content: space-between; margin: 0 0 .6rem; }
 .section-label span { color: #52636f; font-size: .55rem; }
 @media (max-width: 560px) { .arpeggiator-panel { padding: .8rem; } .global-note-section, .sequence-section { grid-template-columns: 1fr 1fr; } .global-note-section h3, .sequence-section h3 { grid-column: 1 / -1; } .routing { grid-template-columns: 1fr; } .control-column { grid-template-columns: 1fr 1fr; } }

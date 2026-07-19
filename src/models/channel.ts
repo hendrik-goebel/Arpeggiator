@@ -26,6 +26,21 @@ export interface Channel {
   playStep: number | null
 }
 
+export interface StoredArpeggiatorState {
+  bpm: number
+  tempoOffset: number
+  pattern: Pattern
+  noteLength: number
+  notes: number[]
+  steps: StepValue[]
+  base: number
+  octave: number
+  loopLength: number
+  arpeggioLength: number
+  quantisation: number
+  key: CircleOfFifthsKey
+}
+
 export function createChannel(index: number, selectedOutputId: Ref<string | null>, log: Ref<string[]>) : Channel {
   const arpeggiator = markRaw(createArpeggiator())
   const channel = reactive({

@@ -33,9 +33,12 @@
 
     <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log"
       :global-key="globalKey"
+      :stored-states="currentStoredStates"
+      :active-stored-state-index="currentActiveStoredStateIndex"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
       @select-output="(id)=>{ selectedOutputId = id }" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @update-octave="updateArpeggioOctave" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
-      @update-arpeggio-length="updateArpeggioLength" @update-global-key="updateGlobalKey" @global-variation="createGlobalVariation" />
+      @update-arpeggio-length="updateArpeggioLength" @update-global-key="updateGlobalKey" @global-variation="createGlobalVariation"
+      @store-state="storeCurrentState" @apply-stored-state="applyStoredState" />
   </main>
 </template>
 
@@ -84,6 +87,10 @@ const {
   updateArpeggioLength,
   updateQuantisation,
   updateArpeggioOctave,
+  currentStoredStates,
+  currentActiveStoredStateIndex,
+  storeCurrentState,
+  applyStoredState,
   copyChannel
 } = useChannels()
 
