@@ -5,7 +5,7 @@
     <div v-for="i in stepCountArray" :key="i-1" class="step-col header-cell" :class="{playing: props.playStep === (i-1)}">{{ i }}</div>
     </div>
 
-    <div v-for="(note, noteIndex) in notes" :key="note" class="row">
+    <div v-for="(note, noteIndex) in notes" :key="note" class="row" :class="{ 'in-key': isKeyNote(note) }">
       <div class="note-col" @click="$emit('toggle-note', note)">{{ noteName(note) }}</div>
       <div v-for="stepIndex in stepCountArray" :key="stepIndex-1" class="step-col"
            :class="{active: steps && steps[stepIndex-1] === note, playing: props.playStep === (stepIndex-1)}"
@@ -16,11 +16,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { STEP_COUNT, NOTE_NAMES, OCTAVE_OFFSET, DEFAULT_BASE } from '../config'
+import { CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_NAMES, OCTAVE_OFFSET, DEFAULT_BASE, MAJOR_SCALE_OFFSETS } from '../config'
 
-const props = defineProps<{ notes: number[], steps: number[] | undefined, base?: number, playStep?: number, stepCount?: number }>()
+const props = defineProps<{ notes: number[], steps: number[] | undefined, base?: number, keyRoot?: string, playStep?: number, stepCount?: number }>()
 
 const base = props.base ?? DEFAULT_BASE
+const keyPitchClass = computed(() => CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === props.keyRoot)?.pitchClass ?? 0)
+const keyPitchClasses = computed(() => new Set(MAJOR_SCALE_OFFSETS.map(offset => (keyPitchClass.value + offset) % 12)))
 
 const stepCountArray = computed(() => {
   const cnt = (props.stepCount && props.stepCount > 0) ? props.stepCount : STEP_COUNT
@@ -31,11 +33,16 @@ function noteName(n:number){
   const octave = Math.floor(n / 12) + OCTAVE_OFFSET
   return `${NOTE_NAMES[n % 12]}${octave}`
 }
+
+function isKeyNote(note: number) {
+  return keyPitchClasses.value.has(note % 12)
+}
 </script>
 
 <style scoped>
 .steps-grid { display: inline-block; min-width: 100%; border: 1px solid var(--line); padding: 7px; border-radius: 6px; background: var(--bg-control); }
 .row { display: flex; align-items: center }
+.row.in-key .note-col, .row.in-key .step-col { background-color: rgba(104, 216, 195, .08); }
 .note-col { width: 72px; padding: 8px; border-right: 1px solid var(--line); color: #a9bac4; cursor: pointer; font: 700 .68rem ui-monospace, monospace; }
 .header-cell { color: var(--text-dim); font-size: .65rem; font-weight: 700; transition: color .18s ease, text-shadow .24s ease; }
 .step-col { width: 34px; height: 30px; margin: 4px; border: 1px solid var(--line); border-radius: 3px; background: #14232b; cursor: pointer; transition: background .12s, border-color .16s ease, box-shadow .22s ease, transform .16s ease; }

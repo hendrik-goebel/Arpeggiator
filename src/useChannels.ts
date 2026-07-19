@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { initMidi, listOutputs, selectOutput, sendNote, enableSineSynth, disableSineSynth, SINE_OUTPUT_ID } from './midi/midi'
 import { createChannel } from './models/channel'
-import { CHANNEL_COUNT, DEFAULT_BASE, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, STEP_COUNT } from './config'
+import { CHANNEL_COUNT, DEFAULT_BASE, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, CircleOfFifthsKey } from './config'
 import { MIDI } from './midi/constants'
 
 export function useChannels() {
@@ -13,6 +13,7 @@ export function useChannels() {
   const currentChannel = computed(() => channels[currentIndex.value])
 
   const globalBpm = ref(DEFAULT_BPM)
+  const globalKey = ref<CircleOfFifthsKey>('C')
   const globalPlaying = ref(false)
 
   function setGlobalBpm(bpm:number){
@@ -21,6 +22,12 @@ export function useChannels() {
       channel.bpm = bpm + channel.tempoOffset
       channel.arpeggiator.setBpm(channel.bpm)
     })
+  }
+
+  function updateGlobalKey(key: string) {
+    if (!CIRCLE_OF_FIFTHS_KEYS.some(candidate => candidate.name === key)) return
+    globalKey.value = key as CircleOfFifthsKey
+    channels.forEach(channel => { channel.key = globalKey.value })
   }
 
   function toggleGlobalPlay(){
@@ -117,12 +124,13 @@ export function useChannels() {
 
   function createVariation(index: number) {
     const channel = channels[index]
-    const cMajorPitches = [0, 2, 4, 5, 7, 9, 11].map(offset => DEFAULT_BASE + offset)
+    const keyPitchClass = CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
+    const keyPitches = MAJOR_SCALE_OFFSETS.map(offset => DEFAULT_BASE + ((keyPitchClass + offset) % 12))
     const length = Math.max(1, Math.min(32, Math.floor(channel.arpeggioLength)))
-    const shuffled = cMajorPitches.sort(() => Math.random() - 0.5)
+    const shuffled = keyPitches.sort(() => Math.random() - 0.5)
     const selected = shuffled.slice(0, Math.min(length, shuffled.length))
     while (selected.length < length) {
-      selected.push(cMajorPitches[Math.floor(Math.random() * cMajorPitches.length)])
+      selected.push(keyPitches[Math.floor(Math.random() * keyPitches.length)])
     }
     selected.sort((a, b) => a - b)
     const notes: number[] = []
@@ -145,6 +153,10 @@ export function useChannels() {
     )
     channel.arpeggiator.setNotes(channel.notes)
     channel.arpeggiator.setSteps(channel.steps)
+  }
+
+  function createGlobalVariation() {
+    channels.forEach((_, index) => createVariation(index))
   }
 
   function playKeyboardNote(key: string) {
@@ -186,6 +198,11 @@ export function useChannels() {
     channel.midiChannel = Math.max(1, Math.min(16, Math.floor(midiChannel)))
   }
   function updatePattern(pattern:any){ currentChannel.value.arpeggiator.setPattern(pattern); currentChannel.value.pattern = pattern }
+  function updateChannelKey(index: number, key: string) {
+    const channel = channels[index]
+    if (!channel || !CIRCLE_OF_FIFTHS_KEYS.some(candidate => candidate.name === key)) return
+    channel.key = key as CircleOfFifthsKey
+  }
   function updateNoteLength(length:number){ currentChannel.value.arpeggiator.setNoteLength(length); currentChannel.value.noteLength = length }
   function updateArpeggioLength(length:number){
     currentChannel.value.arpeggioLength = Math.max(1, Math.min(32, Math.floor(length)))
@@ -223,8 +240,10 @@ export function useChannels() {
     currentIndex,
     currentChannel,
     globalBpm,
+    globalKey,
     globalPlaying,
     setGlobalBpm,
+    updateGlobalKey,
     toggleGlobalPlay,
     selectChannel,
     toggleChannelPlay,
@@ -233,6 +252,7 @@ export function useChannels() {
     cycleStep,
     clearNotes,
     createVariation,
+    createGlobalVariation,
     playKeyboardNote,
     outputs,
     selectedOutputId,
@@ -241,6 +261,7 @@ export function useChannels() {
     updateChannelBpm,
     updateMidiChannel,
     updatePattern,
+    updateChannelKey,
     updateNoteLength,
     updateArpeggioLength,
     updateQuantisation,

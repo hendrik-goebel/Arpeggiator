@@ -1,7 +1,7 @@
 import { markRaw, reactive, Ref } from 'vue'
 import { createArpeggiator, Pattern } from './arpeggiator'
 import { sendNote } from '../midi/midi'
-import { DEFAULT_NOTES, DEFAULT_STEPS, DEFAULT_BASE, DEFAULT_BPM, DEFAULT_NOTE_LENGTH, DEFAULT_QUANT } from '../config'
+import { DEFAULT_NOTES, DEFAULT_STEPS, DEFAULT_BASE, DEFAULT_BPM, DEFAULT_NOTE_LENGTH, DEFAULT_QUANT, CircleOfFifthsKey } from '../config'
 
 export interface Channel {
   id: number
@@ -18,6 +18,7 @@ export interface Channel {
   arpeggioLength: number
   midiChannel: number
   quantisation: number
+  key: CircleOfFifthsKey
   arpeggiator: ReturnType<typeof createArpeggiator>
   color: string
   active: boolean
@@ -41,6 +42,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     arpeggioLength: 4,
     midiChannel: index + 1,
     quantisation: DEFAULT_QUANT,
+    key: 'C' as CircleOfFifthsKey,
     arpeggiator,
     color: '#c94f5e',
     active: false,

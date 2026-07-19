@@ -9,6 +9,22 @@ export const DEFAULT_STEPS = [60,64,67,60,64,67,60,64,60,64,67,60,64,67,60,64]
 export const DEFAULT_NOTES = [60,64,67]
 export const DEFAULT_BASE = 60
 export const KEYBOARD_OCTAVE_SIZE = 12
+export const MAJOR_SCALE_OFFSETS = [0, 2, 4, 5, 7, 9, 11]
+export const CIRCLE_OF_FIFTHS_KEYS = [
+  { name: 'C', pitchClass: 0 },
+  { name: 'G', pitchClass: 7 },
+  { name: 'D', pitchClass: 2 },
+  { name: 'A', pitchClass: 9 },
+  { name: 'E', pitchClass: 4 },
+  { name: 'B', pitchClass: 11 },
+  { name: 'F#/Gb', pitchClass: 6 },
+  { name: 'Db', pitchClass: 1 },
+  { name: 'Ab', pitchClass: 8 },
+  { name: 'Eb', pitchClass: 3 },
+  { name: 'Bb', pitchClass: 10 },
+  { name: 'F', pitchClass: 5 }
+] as const
+export type CircleOfFifthsKey = typeof CIRCLE_OF_FIFTHS_KEYS[number]['name']
 
 // German keyboard layout: white keys span C through D in the next octave,
 // while the black keys continue the chromatic sequence between them.
