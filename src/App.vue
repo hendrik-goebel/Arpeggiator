@@ -10,6 +10,7 @@
           <span class="input-wrap"><input type="number" :value="globalBpm" @input="(e)=> setGlobalBpm(+e.target.value)" min="20" max="300" /><small>BPM</small></span>
         </label>
         <button class="master-play" @click="toggleGlobalPlay">{{ globalPlaying ? 'Stop All' : 'Start All' }}</button>
+        <button class="master-mute" @click="toggleMuteAll">{{ allMuted ? 'Unmute All' : 'Mute All' }}</button>
         <label class="clock-control">CLOCK OUT
           <select :value="clockOutputId" @change="setClockOutput($event.target.value || null)">
             <option value="">Off</option>
@@ -27,7 +28,7 @@
 
 
     <section class="module channel-module">
-      <ChannelsBar :channels="channels" :currentIndex="currentIndex" @select="selectChannel" @copy-channel="copyChannel" @toggle="toggleChannelPlay" @update-key="updateChannelKey" @update-midi-channel="updateMidiChannel" @update-bpm="updateChannelBpm" />
+      <ChannelsBar :channels="channels" :currentIndex="currentIndex" @select="selectChannel" @copy-channel="copyChannel" @toggle="toggleChannelPlay" @toggle-mute="toggleMute" @update-key="updateChannelKey" @update-midi-channel="updateMidiChannel" @update-bpm="updateChannelBpm" />
     </section>
 
 
@@ -62,6 +63,7 @@ const {
   channels,
   currentIndex,
   currentChannel,
+  allMuted,
   globalBpm,
   globalKey,
   globalPlaying,
@@ -72,6 +74,8 @@ const {
   createGlobalVariation,
   selectChannel,
   toggleChannelPlay,
+  toggleMute,
+  toggleMuteAll,
   createVariation,
   updateMidiChannel,
   togglePlay,
@@ -187,6 +191,10 @@ h2 { color: var(--text-muted); font-size: .7rem; letter-spacing: .16em; }
 .master-play {
   border: 1px solid var(--teal); border-radius: 5px; padding: .7rem 1rem; background: var(--teal-deep);
   color: var(--teal-soft); font-size: .65rem; font-weight: 800; letter-spacing: .1em; cursor: pointer;
+}
+.master-mute {
+  border: 1px solid var(--coral); border-radius: 5px; padding: .7rem 1rem; background: var(--coral-deep);
+  color: var(--coral-soft); font-size: .65rem; font-weight: 800; letter-spacing: .1em; cursor: pointer;
 }
 .clock-control { display: grid; gap: .3rem; color: var(--text-muted); font-size: .55rem; font-weight: 800; letter-spacing: .1em; }
 .clock-control select { max-width: 10rem; border: 1px solid var(--line-strong); border-radius: 4px; padding: .35rem; background: var(--bg-control); color: var(--text); font-size: .65rem; }

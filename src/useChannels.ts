@@ -10,6 +10,7 @@ const SEED_PREFIX = 'ARP1-'
 
 interface SeedChannelState extends StoredArpeggiatorState {
   midiChannel: number
+  muted: boolean
 }
 
 interface AppSeed {
@@ -29,6 +30,7 @@ export function useChannels() {
   const channels = Array.from({length: CHANNEL_COUNT}, (_, index)=> createChannel(index, selectedOutputId, log))
   const currentIndex = ref(0)
   const currentChannel = computed(() => channels[currentIndex.value])
+  const allMuted = computed(() => channels.every(channel => channel.muted))
   const storedStates = ref<(StoredArpeggiatorState | null)[][]>(
     channels.map(() => Array.from({ length: STORED_STATE_COUNT }, () => null))
   )
@@ -106,8 +108,19 @@ export function useChannels() {
       } else {
         channel.arpeggiator.start()
       }
+
     }
     syncMidiClockTransport()
+  }
+
+  function toggleMute(index: number) {
+    const channel = channels[index]
+    if (channel) channel.muted = !channel.muted
+  }
+
+  function toggleMuteAll() {
+    const muted = !allMuted.value
+    channels.forEach(channel => { channel.muted = muted })
   }
 
   function togglePlay(){
@@ -346,7 +359,7 @@ export function useChannels() {
     const note = channel.base + offset
     const outputId = selectedOutputId.value
     const noteLengthMilliseconds = noteLengthToMilliseconds(channel.noteLength, channel.bpm)
-    if (outputId) sendNote(outputId, note, MIDI.VELOCITY_MAX, noteLengthMilliseconds, channel.midiChannel - 1)
+    if (!channel.muted && outputId) sendNote(outputId, note, MIDI.VELOCITY_MAX, noteLengthMilliseconds, channel.midiChannel - 1)
 
     channel.active = true
     log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${MIDI.VELOCITY_MAX} len=${noteLengthMilliseconds}`)
@@ -483,7 +496,8 @@ export function useChannels() {
   function snapshotSeedChannel(channel: typeof channels[number]): SeedChannelState {
     return {
       ...snapshotChannelState(channel),
-      midiChannel: channel.midiChannel
+      midiChannel: channel.midiChannel,
+      muted: channel.muted
     }
   }
 
@@ -532,7 +546,8 @@ export function useChannels() {
   function isSeedChannel(value: unknown): value is SeedChannelState {
     return isStoredState(value) && isRecord(value) &&
       typeof value.midiChannel === 'number' && Number.isInteger(value.midiChannel) &&
-      value.midiChannel >= 1 && value.midiChannel <= 16
+      value.midiChannel >= 1 && value.midiChannel <= 16 &&
+      typeof value.muted === 'boolean'
   }
 
   function decodeSeed(seedKey: string): AppSeed | null {
@@ -592,6 +607,7 @@ export function useChannels() {
     seed.channels.forEach((state, index) => {
       const channel = channels[index]
       channel.midiChannel = state.midiChannel
+      channel.muted = state.muted
       applyChannelState(channel, state)
     })
     storedStates.value = seed.storedStates.map(states => states.map(cloneStoredState))
@@ -631,6 +647,7 @@ export function useChannels() {
     target.arpeggioLength = source.arpeggioLength
     target.quantisation = source.quantisation
     target.key = source.key
+    target.muted = source.muted
     storedStates.value[targetIndex] = storedStates.value[sourceIndex].map(cloneStoredState)
     activeStoredStateIndexes.value[targetIndex] = activeStoredStateIndexes.value[sourceIndex]
 
@@ -667,6 +684,7 @@ export function useChannels() {
     channels,
     currentIndex,
     currentChannel,
+    allMuted,
     globalBpm,
     globalKey,
     globalPlaying,
@@ -676,6 +694,8 @@ export function useChannels() {
     stopAll,
     selectChannel,
     toggleChannelPlay,
+    toggleMute,
+    toggleMuteAll,
     togglePlay,
     toggleNote,
     cycleStep,

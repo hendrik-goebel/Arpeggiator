@@ -8,6 +8,9 @@
           ch.playing ? 'Stop' : 'Start'
         }}
       </button>
+      <button @click.stop="$emit('toggle-mute', i)" :class="{muted: ch.muted}">
+        {{ ch.muted ? 'Unmute' : 'Mute' }}
+      </button>
       <label class="key-control">Key
         <select :value="ch.key" @click.stop @change.stop="$emit('update-key', i, $event.target.value)">
           <option v-for="key in CIRCLE_OF_FIFTHS_KEYS" :key="key.name" :value="key.name">{{ key.name }}</option>
@@ -29,6 +32,7 @@ import { CIRCLE_OF_FIFTHS_KEYS } from '../config'
 const emit = defineEmits<{
   (event: 'select', index: number): void
   (event: 'copy-channel', sourceIndex: number, targetIndex: number): void
+  (event: 'toggle-mute', index: number): void
 }>()
 
 defineProps<{ channels: any[], currentIndex: number }>()
@@ -90,6 +94,10 @@ function dropOnChannel(targetIndex: number, event: DragEvent) {
 .channel button.playing {
   background: var(--teal-deep);
   color: var(--teal-soft);
+}
+.channel button.muted {
+  background: var(--coral-deep);
+  color: var(--coral-soft);
 }
 
 .key-control {

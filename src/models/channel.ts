@@ -11,6 +11,7 @@ export interface Channel {
   pattern: Pattern | any
   noteLength: number
   playing: boolean
+  muted: boolean
   notes: number[]
   steps: StepValue[]
   base: number
@@ -51,6 +52,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     pattern: 'up' as any,
     noteLength: DEFAULT_NOTE_LENGTH,
     playing: false,
+    muted: false,
     notes: DEFAULT_NOTES.slice() as number[],
     steps: DEFAULT_STEPS.slice() as StepValue[],
     base: DEFAULT_BASE,
@@ -71,7 +73,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     const { note, velocity, length } = payload
     const outputId = selectedOutputId.value
     console.log(`[note-start] ${channel.name} note=${note} velocity=${velocity} length=${length} time=${new Date().toISOString()}`)
-    if (outputId) sendNote(outputId, note, velocity, length, channel.midiChannel - 1)
+    if (!channel.muted && outputId) sendNote(outputId, note, velocity, length, channel.midiChannel - 1)
     log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${velocity} len=${length}`)
     const timeoutMs = Math.max(length || channel.noteLength || 120, 120)
     setTimeout(() => { channel.active = false }, timeoutMs)
