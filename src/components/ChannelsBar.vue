@@ -8,6 +8,8 @@
           ch.playing ? 'Stop' : 'Start'
         }}
       </button>
+      <button class="variation-button" @click.stop="$emit('variation', i)">var</button>
+      <button class="midi-channel-button" @click.stop="$emit('cycle-midi-channel', i)" :title="`MIDI output channel ${ch.midiChannel}; click to change`">MIDI {{ ch.midiChannel }}</button>
       <label class="tempo-control">Tempo
         <span><input type="number" :value="ch.bpm" :disabled="syncActive" min="20" max="300" @input="$emit('update-bpm', i, +$event.target.value)" /><small>BPM</small></span>
       </label>
@@ -54,6 +56,15 @@ const props = defineProps<{ channels: any[], currentIndex: number, syncActive: b
 .channel button.playing {
   background: #1d544d;
   color: #dffff9;
+}
+
+.channel button.variation-button {
+  color: #d9b8ff;
+}
+
+.channel button.midi-channel-button {
+  color: #8fd3ff;
+  font-size: .55rem;
 }
 
 .tempo-control {

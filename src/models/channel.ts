@@ -14,6 +14,8 @@ export interface Channel {
   steps: number[]
   base: number
   loopLength: number
+  arpeggioLength: number
+  midiChannel: number
   quantisation: number
   arpeggiator: ReturnType<typeof createArpeggiator>
   color: string
@@ -34,6 +36,8 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     steps: DEFAULT_STEPS.slice() as number[],
     base: DEFAULT_BASE,
     loopLength: DEFAULT_STEPS.length,
+    arpeggioLength: 4,
+    midiChannel: index + 1,
     quantisation: DEFAULT_QUANT,
     arpeggiator,
     color: '#f28b82',
@@ -46,7 +50,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     const { note, velocity, length } = payload
     const outputId = selectedOutputId.value
     console.log(`[note-start] ${channel.name} note=${note} velocity=${velocity} length=${length} time=${new Date().toISOString()}`)
-    if (outputId) sendNote(outputId, note, velocity, length, channel.id)
+    if (outputId) sendNote(outputId, note, velocity, length, channel.midiChannel - 1)
     log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${velocity} len=${length}`)
     const timeoutMs = Math.max(length || channel.noteLength || 120, 120)
     setTimeout(() => { channel.active = false }, timeoutMs)

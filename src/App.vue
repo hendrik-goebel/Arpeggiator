@@ -16,13 +16,14 @@
 
 
     <section class="module channel-module">
-      <ChannelsBar :channels="channels" :currentIndex="currentIndex" :sync-active="syncChannels" @select="selectChannel" @toggle="toggleChannelPlay" @update-bpm="updateChannelBpm" />
+      <ChannelsBar :channels="channels" :currentIndex="currentIndex" :sync-active="syncChannels" @select="selectChannel" @toggle="toggleChannelPlay" @variation="createVariation" @cycle-midi-channel="cycleMidiChannel" @update-bpm="updateChannelBpm" />
     </section>
 
 
     <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log" :synthEnabled="synthEnabled"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
       @select-output="(id)=>{ selectedOutputId = id }" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
+      @update-arpeggio-length="updateArpeggioLength"
       @toggle-synth="toggleSynth" />
   </main>
 </template>
@@ -45,6 +46,8 @@ const {
   toggleGlobalPlay,
   selectChannel,
   toggleChannelPlay,
+  createVariation,
+  cycleMidiChannel,
   togglePlay,
   toggleNote,
   cycleStep,
@@ -58,6 +61,7 @@ const {
   updatePattern,
   updateNoteLength,
   updateLoopLength,
+  updateArpeggioLength,
   updateQuantisation,
   synthEnabled,
   toggleSynth

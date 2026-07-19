@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { initMidi, listOutputs, selectOutput, sendNote, enableSineSynth, disableSineSynth } from './midi/midi'
 import { createChannel } from './models/channel'
-import { CHANNEL_COUNT, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, STEP_COUNT } from './config'
+import { CHANNEL_COUNT, DEFAULT_BASE, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, STEP_COUNT } from './config'
 import { MIDI } from './midi/constants'
 
 export function useChannels() {
@@ -134,6 +134,38 @@ export function useChannels() {
     channel.arpeggiator.setSteps(channel.steps)
   }
 
+  function createVariation(index: number) {
+    const channel = channels[index]
+    const cMajorPitches = [0, 2, 4, 5, 7, 9, 11].map(offset => DEFAULT_BASE + offset)
+    const length = Math.max(1, Math.min(32, Math.floor(channel.arpeggioLength)))
+    const shuffled = cMajorPitches.sort(() => Math.random() - 0.5)
+    const selected = shuffled.slice(0, Math.min(length, shuffled.length))
+    while (selected.length < length) {
+      selected.push(cMajorPitches[Math.floor(Math.random() * cMajorPitches.length)])
+    }
+    selected.sort((a, b) => a - b)
+    const notes: number[] = []
+
+    if (channel.pattern === 'random') {
+      notes.push(...selected.sort(() => Math.random() - 0.5))
+    } else if (channel.pattern === 'down') {
+      notes.push(...selected.reverse())
+    } else if (channel.pattern === 'updown') {
+      notes.push(...selected, ...selected.slice(1, -1).reverse())
+    } else {
+      notes.push(...selected)
+    }
+
+    channel.base = DEFAULT_BASE
+    channel.notes = [...new Set(selected)].sort((a, b) => a - b)
+    channel.steps = Array.from(
+      { length: channel.loopLength },
+      (_, step) => notes[step % notes.length]
+    )
+    channel.arpeggiator.setNotes(channel.notes)
+    channel.arpeggiator.setSteps(channel.steps)
+  }
+
   function playKeyboardNote(key: string) {
     const offset = KEYBOARD_NOTE_OFFSETS[key.toLowerCase()]
     if (offset === undefined) return false
@@ -141,7 +173,7 @@ export function useChannels() {
     const channel = currentChannel.value
     const note = channel.base + offset
     const outputId = selectedOutputId.value
-    if (outputId) sendNote(outputId, note, MIDI.VELOCITY_MAX, channel.noteLength, channel.id)
+    if (outputId) sendNote(outputId, note, MIDI.VELOCITY_MAX, channel.noteLength, channel.midiChannel - 1)
 
     channel.active = true
     log.value.unshift(`${new Date().toISOString()} ${channel.name} NOTE ${note} vel=${MIDI.VELOCITY_MAX} len=${channel.noteLength}`)
@@ -174,16 +206,29 @@ export function useChannels() {
     channel.arpeggiator.setBpm(bpm)
     channel.bpm = bpm
   }
+  function cycleMidiChannel(index:number) {
+    const channel = channels[index]
+    channel.midiChannel = channel.midiChannel >= 16 ? 1 : channel.midiChannel + 1
+  }
   function updatePattern(pattern:any){ currentChannel.value.arpeggiator.setPattern(pattern); currentChannel.value.pattern = pattern }
   function updateNoteLength(length:number){ currentChannel.value.arpeggiator.setNoteLength(length); currentChannel.value.noteLength = length }
+  function updateArpeggioLength(length:number){
+    currentChannel.value.arpeggioLength = Math.max(1, Math.min(32, Math.floor(length)))
+  }
   function updateLoopLength(length:number){
     const channel = currentChannel.value
-    const newLen = Math.max(1, Math.min(32, Math.floor(length)))
-    channel.loopLength = newLen
-    // adjust steps array length
+    const newLen = Math.max(1, Math.min(64, Math.floor(length)))
     if (!channel.steps) channel.steps = []
-    if (channel.steps.length < newLen) channel.steps = channel.steps.concat(Array.from({ length: newLen - channel.steps.length }, () => -1))
+    if (channel.steps.length < newLen) {
+      const arpeggio = channel.steps.filter(step => typeof step === 'number' && step >= 0)
+      const addedSteps = Array.from(
+        { length: newLen - channel.steps.length },
+        (_, index) => arpeggio.length ? arpeggio[index % arpeggio.length] : -1
+      )
+      channel.steps = channel.steps.concat(addedSteps)
+    }
     else if (channel.steps.length > newLen) channel.steps = channel.steps.slice(0, newLen)
+    channel.loopLength = newLen
     if (typeof channel.arpeggiator.setLoopLength === 'function') {
       channel.arpeggiator.setLoopLength(newLen)
       // ensure arpeggiator uses the resized steps array
@@ -214,14 +259,17 @@ export function useChannels() {
     toggleNote,
     cycleStep,
     clearNotes,
+    createVariation,
     playKeyboardNote,
     outputs,
     selectedOutputId,
     enableMidi,
     log,
     updateChannelBpm,
+    cycleMidiChannel,
     updatePattern,
     updateNoteLength,
+    updateArpeggioLength,
     updateQuantisation,
     updateLoopLength,
     synthEnabled,

@@ -53,7 +53,7 @@ export function createArpeggiator() {
   }
 
   function setLoopLength(n:number){
-    loopLength = Math.max(1, Math.min(32, Math.floor(n)))
+    loopLength = Math.max(1, Math.min(64, Math.floor(n)))
     // resize steps array to match loopLength
     if (!steps) steps = []
     if (steps.length < loopLength) {

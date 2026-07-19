@@ -23,8 +23,9 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
       <div class="control-column">
         <h3>SEQUENCE</h3>
         <label>Pattern <select :value="channel.pattern" @change="$emit('update-pattern', $event.target.value)"><option value="up">Up</option><option value="down">Down</option><option value="updown">UpDown</option><option value="random">Random</option></select></label>
+        <label>Arpeggio length <span class="value-input"><input type="number" :value="channel.arpeggioLength" @input="$emit('update-arpeggio-length', +$event.target.value)" min="1" max="32" /><small>NOTES</small></span></label>
         <label>Quantisation <select :value="channel.quantisation" @change="$emit('update-quant', +$event.target.value)"><option v-for="q in [1,2,3,4,5,8,16,32,64]" :key="q" :value="q">{{ q }}</option></select></label>
-        <label>Loop length <span class="value-input"><input type="number" :value="channel.loopLength" @input="$emit('update-loop-length', +$event.target.value)" min="1" max="32" /><small>STEPS</small></span></label>
+        <label>Loop length <span class="value-input"><input type="number" :value="channel.loopLength" @input="$emit('update-loop-length', +$event.target.value)" min="1" max="64" /><small>STEPS</small></span></label>
       </div>
       <div class="control-column routing">
         <h3>ROUTING</h3>
