@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import StepsGrid from './StepsGrid.vue'
 import LogPanel from './LogPanel.vue'
+import StepperControl from './StepperControl.vue'
 import { DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE } from '../config'
 const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
 
@@ -14,9 +15,9 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
     <div class="controls">
       <div class="control-section sequence-section">
         <h3>SEQUENCE</h3>
-        <label>Pattern <select :value="channel.pattern" @change="$emit('update-pattern', $event.target.value)"><option value="up">Up</option><option value="down">Down</option><option value="updown">UpDown</option><option value="random">Random</option></select></label>
+        <label>Pattern <StepperControl :value="channel.pattern" :values="['up', 'down', 'updown', 'random']" @update:value="$emit('update-pattern', $event)" /></label>
         <label>Arpeggio length <span class="value-input"><input type="number" :value="channel.arpeggioLength" @input="$emit('update-arpeggio-length', +$event.target.value)" min="1" max="32" /><small>NOTES</small></span></label>
-        <label>Quantisation <select :value="channel.quantisation" @change="$emit('update-quant', +$event.target.value)"><option v-for="q in [1,2,3,4,5,8,16,32,64]" :key="q" :value="q">{{ q }}</option></select></label>
+        <label>Quantisation <StepperControl :value="channel.quantisation" :values="[1, 2, 3, 4, 5, 8, 16, 32, 64]" @update:value="$emit('update-quant', +$event)" /></label>
         <label>Loop length <span class="value-input"><input type="number" :value="channel.loopLength" @input="$emit('update-loop-length', +$event.target.value)" min="1" max="64" /><small>STEPS</small></span></label>
         <label>Note length <span class="value-input"><input type="number" :value="channel.noteLength" @input="$emit('update-noteLength', +$event.target.value)" min="50" max="2000" /><small>MS</small></span></label>
       </div>
