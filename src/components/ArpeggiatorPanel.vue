@@ -11,37 +11,30 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
 
 <template>
   <section class="arpeggiator-panel">
-    <div class="panel-title">
-      <div><p>ACTIVE VOICE</p><h2>{{ channel.name }} ARPEGGIATOR</h2></div>
-      <button class="play-button" :class="{ playing: channel.playing }" @click="$emit('toggle-play')"><span></span>{{ channel.playing ? 'Stop' : 'Play' }}</button>
-    </div>
     <div class="controls">
-      <div class="control-column">
-        <h3>PERFORMANCE</h3>
-        <label>Note length <span class="value-input"><input type="number" :value="channel.noteLength" @input="$emit('update-noteLength', +$event.target.value)" min="50" max="2000" /><small>MS</small></span></label>
-      </div>
-      <div class="control-column">
+      <div class="control-section sequence-section">
         <h3>SEQUENCE</h3>
         <label>Pattern <select :value="channel.pattern" @change="$emit('update-pattern', $event.target.value)"><option value="up">Up</option><option value="down">Down</option><option value="updown">UpDown</option><option value="random">Random</option></select></label>
         <label>Arpeggio length <span class="value-input"><input type="number" :value="channel.arpeggioLength" @input="$emit('update-arpeggio-length', +$event.target.value)" min="1" max="32" /><small>NOTES</small></span></label>
         <label>Quantisation <select :value="channel.quantisation" @change="$emit('update-quant', +$event.target.value)"><option v-for="q in [1,2,3,4,5,8,16,32,64]" :key="q" :value="q">{{ q }}</option></select></label>
         <label>Loop length <span class="value-input"><input type="number" :value="channel.loopLength" @input="$emit('update-loop-length', +$event.target.value)" min="1" max="64" /><small>STEPS</small></span></label>
+        <label>Note length <span class="value-input"><input type="number" :value="channel.noteLength" @input="$emit('update-noteLength', +$event.target.value)" min="50" max="2000" /><small>MS</small></span></label>
       </div>
+    </div>
+
+    <div class="sequencer">
+      <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :play-step="channel.playStep" :step-count="channel.loopLength" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
+    </div>
+    <div class="routing-section">
       <div class="control-column routing">
-        <h3>ROUTING</h3>
         <label>Output <select :value="selectedOutputId" @change="$emit('select-output', $event.target.value)"><option v-for="o in outputs" :key="o.id" :value="o.id">{{ o.name }}</option></select></label>
         <div class="utility-buttons">
-          <button @click="$emit('enable-midi')">Enable MIDI</button>
           <button :class="{ active: props.synthEnabled }" @click="$emit('toggle-synth')">Synth {{ props.synthEnabled ? 'On' : 'Off' }}</button>
           <button class="clear-button" @click="$emit('clear-notes')">Clear grid</button>
         </div>
       </div>
     </div>
-    <div class="sequencer">
-      <div class="section-label">STEP SEQUENCER <span>CLICK CELLS TO PROGRAM</span></div>
-      <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :play-step="channel.playStep" :step-count="channel.loopLength" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
-    </div>
-    <LogPanel :lines="log" />
+
   </section>
 </template>
 
@@ -55,8 +48,15 @@ h2 { color: #effaff; font-size: 1.15rem; letter-spacing: .08em; }
 .play-button span { display: inline-block; width: 0; height: 0; margin-right: .45rem; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid currentColor; }
 .play-button.playing { border-color: var(--coral); background: var(--coral-deep); color: var(--coral-soft); }
 .play-button.playing span { width: 6px; height: 8px; border: 0; border-left: 2px solid currentColor; border-right: 2px solid currentColor; }
-.controls { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 1px; margin-bottom: 1.25rem; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--line); }
+.controls { display: grid; gap: 1.25rem; margin-bottom: 1.25rem; }
+.control-section, .routing-section { border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--line); }
+.control-section { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem 1rem; padding: 1rem; background: var(--bg-raised); }
+.sequence-section { grid-template-columns: minmax(5.5rem, auto) repeat(5, minmax(0, 1fr)); align-items: end; }
+.routing-section { grid-template-columns: 1fr; }
 .control-column { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem 1rem; padding: 1rem; background: var(--bg-raised); }
+.control-section h3 { grid-column: 1 / -1; color: var(--teal); }
+.sequence-section h3 { grid-column: auto; }
+.control-section label { display: grid; gap: .38rem; }
 .control-column h3 { grid-column: 1 / -1; color: var(--teal); }
 .control-column label { display: grid; gap: .38rem; }
 select, input { min-width: 0; box-sizing: border-box; border: 1px solid var(--line-strong); border-radius: 4px; padding: .45rem .5rem; background: var(--bg-control); color: #e7f6fb; font: 600 .75rem ui-monospace, monospace; outline: none; }
@@ -64,7 +64,8 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
 .value-input { display: flex; align-items: center; border-bottom: 1px solid var(--line-strong); }
 .value-input input { width: 100%; border: 0; border-radius: 0; background: transparent; padding: .35rem 0; }
 .value-input small { color: var(--teal); font-size: .55rem; }
-.routing { grid-template-columns: 1fr; }
+.routing { grid-template-columns: minmax(0, 1fr) 2fr; }
+.routing h3 { grid-column: 1 / -1; }
 .utility-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; }
 .utility-buttons button { border: 1px solid var(--line-strong); border-radius: 4px; padding: .5rem .3rem; background: #1c2a33; color: #aabcc7; font-size: .56rem; font-weight: 800; letter-spacing: .06em; cursor: pointer; }
 .utility-buttons button.active { border-color: var(--teal); color: var(--teal); }
@@ -72,6 +73,5 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
 .sequencer { overflow-x: auto; }
 .section-label { display: flex; justify-content: space-between; margin: 0 0 .6rem; }
 .section-label span { color: #52636f; font-size: .55rem; }
-@media (max-width: 850px) { .controls { grid-template-columns: 1fr 1fr; } .routing { grid-column: 1 / -1; } }
-@media (max-width: 560px) { .arpeggiator-panel { padding: .8rem; } .controls { grid-template-columns: 1fr; } .routing { grid-column: auto; } .control-column { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .arpeggiator-panel { padding: .8rem; } .sequence-section { grid-template-columns: 1fr 1fr; } .sequence-section h3 { grid-column: 1 / -1; } .routing { grid-template-columns: 1fr; } .control-column { grid-template-columns: 1fr 1fr; } }
 </style>
