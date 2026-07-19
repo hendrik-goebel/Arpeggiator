@@ -7,16 +7,15 @@
       </div>
       <div class="master-control">
         <label>GLOBAL TEMPO
-          <span class="input-wrap"><input type="number" :value="globalBpm" @input="(e)=> setGlobalBpm(+e.target.value)" :disabled="!syncChannels" min="20" max="300" /><small>BPM</small></span>
+          <span class="input-wrap"><input type="number" :value="globalBpm" @input="(e)=> setGlobalBpm(+e.target.value)" min="20" max="300" /><small>BPM</small></span>
         </label>
-        <button class="sync-toggle" :class="{ active: syncChannels }" @click="setSyncChannels(!syncChannels)">Sync channel clocks</button>
         <button class="master-play" @click="toggleGlobalPlay">{{ globalPlaying ? 'Stop All' : 'Start All' }}</button>
       </div>
     </section>
 
 
     <section class="module channel-module">
-      <ChannelsBar :channels="channels" :currentIndex="currentIndex" :sync-active="syncChannels" @select="selectChannel" @toggle="toggleChannelPlay" @variation="createVariation" @cycle-midi-channel="cycleMidiChannel" @update-bpm="updateChannelBpm" />
+      <ChannelsBar :channels="channels" :currentIndex="currentIndex" @select="selectChannel" @toggle="toggleChannelPlay" @variation="createVariation" @cycle-midi-channel="cycleMidiChannel" @update-bpm="updateChannelBpm" />
     </section>
 
 
@@ -38,8 +37,6 @@ const {
   channels,
   currentIndex,
   currentChannel,
-  syncChannels,
-  setSyncChannels,
   globalBpm,
   globalPlaying,
   setGlobalBpm,
@@ -145,12 +142,6 @@ h2 { color: #91a3ae; font-size: .7rem; letter-spacing: .16em; }
   border: 1px solid #63e6cf; border-radius: 5px; padding: .7rem 1rem; background: #1e504b;
   color: #dffff9; font-size: .65rem; font-weight: 800; letter-spacing: .1em; cursor: pointer;
 }
-.sync-toggle {
-  border: 1px solid #334956; border-radius: 5px; padding: .7rem .8rem; background: #111b22;
-  color: #91a3ae; font-size: .6rem; font-weight: 800; letter-spacing: .08em; cursor: pointer;
-}
-.sync-toggle.active { border-color: #63e6cf; color: #63e6cf; }
-
 @media (max-width: 650px) {
   .instrument { width: min(100% - 1rem, 1180px); margin-top: 1rem; }
   .instrument-header, .global-controls { align-items: flex-start; flex-direction: column; gap: 1rem; }

@@ -11,14 +11,14 @@
       <button class="variation-button" @click.stop="$emit('variation', i)">var</button>
       <button class="midi-channel-button" @click.stop="$emit('cycle-midi-channel', i)" :title="`MIDI output channel ${ch.midiChannel}; click to change`">MIDI {{ ch.midiChannel }}</button>
       <label class="tempo-control">Tempo
-        <span><input type="number" :value="ch.bpm" :disabled="syncActive" min="20" max="300" @input="$emit('update-bpm', i, +$event.target.value)" /><small>BPM</small></span>
+        <span><input type="number" :value="ch.bpm" min="20" max="300" @input="$emit('update-bpm', i, +$event.target.value)" /><small>BPM</small></span>
       </label>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ channels: any[], currentIndex: number, syncActive: boolean }>()
+defineProps<{ channels: any[], currentIndex: number }>()
 </script>
 
 <style scoped>
@@ -90,7 +90,6 @@ const props = defineProps<{ channels: any[], currentIndex: number, syncActive: b
   outline: 0;
 }
 .tempo-control input:focus { border-color: #63e6cf; }
-.tempo-control input:disabled { color: #5a6b74; }
 .tempo-control small { margin-left: .3rem; color: #63e6cf; font-size: .5rem; }
 
 </style>

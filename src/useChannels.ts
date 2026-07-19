@@ -14,16 +14,15 @@ export function useChannels() {
   const currentIndex = ref(0)
   const currentChannel = computed(() => channels[currentIndex.value])
 
-  const syncChannels = ref(false)
   const globalBpm = ref(DEFAULT_BPM)
   const globalPlaying = ref(false)
 
   function setGlobalBpm(bpm:number){
     globalBpm.value = bpm
-    if (syncChannels.value) {
-      // Apply global tempo to running clocks but do not change channel BPM fields
-      channels.forEach(channel => { channel.arpeggiator.setBpm(bpm) })
-    }
+    channels.forEach(channel => {
+      channel.bpm = bpm + channel.tempoOffset
+      channel.arpeggiator.setBpm(channel.bpm)
+    })
   }
 
   function toggleGlobalPlay(){
@@ -35,22 +34,6 @@ export function useChannels() {
       // start all channels
       channels.forEach(channel => { if (!channel.playing) channel.arpeggiator.start() })
       globalPlaying.value = true
-    }
-  }
-
-  function setSyncChannels(enabled:boolean){
-    // Toggle sync mode without changing any channel play states.
-    // When enabling, ensure all arpeggiators use the global BPM but do not mutate channel BPM fields.
-    // When disabling, restore each arpeggiator to its channel's local BPM so channels once again use their own tempo.
-    syncChannels.value = enabled
-    if (enabled) {
-      channels.forEach(channel => {
-        channel.arpeggiator.setBpm(globalBpm.value)
-      })
-    } else {
-      channels.forEach(channel => {
-        channel.arpeggiator.setBpm(channel.bpm)
-      })
     }
   }
 
@@ -203,8 +186,9 @@ export function useChannels() {
 
   function updateChannelBpm(index:number, bpm:number) {
     const channel = channels[index]
-    channel.arpeggiator.setBpm(bpm)
+    channel.tempoOffset = bpm - globalBpm.value
     channel.bpm = bpm
+    channel.arpeggiator.setBpm(bpm)
   }
   function cycleMidiChannel(index:number) {
     const channel = channels[index]
@@ -247,8 +231,6 @@ export function useChannels() {
     channels,
     currentIndex,
     currentChannel,
-    syncChannels,
-    setSyncChannels,
     globalBpm,
     globalPlaying,
     setGlobalBpm,

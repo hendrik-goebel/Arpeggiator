@@ -7,6 +7,7 @@ export interface Channel {
   id: number
   name: string
   bpm: number
+  tempoOffset: number
   pattern: Pattern | any
   noteLength: number
   playing: boolean
@@ -29,6 +30,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     id: index,
     name: `Ch ${index+1}`,
     bpm: DEFAULT_BPM,
+    tempoOffset: 0,
     pattern: 'up' as any,
     noteLength: DEFAULT_NOTE_LENGTH,
     playing: false,
