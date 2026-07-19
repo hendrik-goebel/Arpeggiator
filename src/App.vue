@@ -115,7 +115,6 @@ const seedStatus = ref('')
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.repeat) return
-  if (!event.getModifierState('CapsLock')) return
 
   const target = event.target
   if (target instanceof HTMLElement &&
@@ -123,6 +122,48 @@ function handleKeydown(event: KeyboardEvent) {
     return
   }
 
+  const key = event.key.toLowerCase()
+  if (event.metaKey && key === 'm') {
+    toggleMuteAll()
+    event.preventDefault()
+    return
+  }
+  if (event.metaKey && key === 'v') {
+    createGlobalVariation()
+    event.preventDefault()
+    return
+  }
+
+  if (!event.metaKey && !event.ctrlKey && !event.altKey) {
+    if (/^[1-8]$/.test(event.key)) {
+      selectChannel(Number(event.key) - 1)
+      event.preventDefault()
+      return
+    }
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      const direction = event.key === 'ArrowLeft' ? -1 : 1
+      selectChannel((currentIndex.value + direction + channels.length) % channels.length)
+      event.preventDefault()
+      return
+    }
+    if (key === 'm') {
+      toggleMute(currentIndex.value)
+      event.preventDefault()
+      return
+    }
+    if (event.key === ' ') {
+      togglePlay()
+      event.preventDefault()
+      return
+    }
+    if (key === 'v') {
+      createVariation(currentIndex.value)
+      event.preventDefault()
+      return
+    }
+  }
+
+  if (!event.getModifierState('CapsLock')) return
   if (playKeyboardNote(event.key)) event.preventDefault()
 }
 
