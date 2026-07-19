@@ -55,13 +55,11 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
           @click="$emit('apply-stored-state', index)"
         >{{ index + 1 }}</button>
       </div>
+      <button class="clear-button" @click="$emit('clear-notes')">Clear grid</button>
     </div>
     <div class="routing-section">
       <div class="control-column routing">
         <label>Output <select :value="selectedOutputId" @change="$emit('select-output', $event.target.value)"><option v-for="o in outputs" :key="o.id" :value="o.id">{{ o.name }}</option></select></label>
-        <div class="utility-buttons">
-          <button class="clear-button" @click="$emit('clear-notes')">Clear grid</button>
-        </div>
       </div>
     </div>
 
@@ -101,10 +99,12 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
 .value-input small { color: var(--teal); font-size: .55rem; }
 .routing { grid-template-columns: minmax(0, 1fr) 2fr; }
 .routing h3 { grid-column: 1 / -1; }
-.utility-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; }
-.utility-buttons button { border: 1px solid var(--line-strong); border-radius: 4px; padding: .5rem .3rem; background: #1c2a33; color: #aabcc7; font-size: .56rem; font-weight: 800; letter-spacing: .06em; cursor: pointer; }
-.utility-buttons button.active { border-color: var(--teal); color: var(--teal); }
-.utility-buttons .clear-button { color: var(--coral); }
+.clear-button {
+  margin-left: auto;
+  border: 1px solid var(--line-strong); border-radius: 4px; padding: .5rem .7rem;
+  background: #1c2a33; color: var(--coral); font-size: .56rem; font-weight: 800;
+  letter-spacing: .06em; cursor: pointer;
+}
 .sequencer { overflow-x: auto; }
 .state-storage {
   display: flex; flex-wrap: wrap; gap: .45rem; align-items: center;

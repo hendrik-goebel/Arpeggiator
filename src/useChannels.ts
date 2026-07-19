@@ -271,11 +271,14 @@ export function useChannels() {
       return [...new Set(variedChord)].sort((a, b) => a - b)
     }
 
+    const hadNotes = channel.notes.length > 0
     channel.base = octaveBase
     channel.notes = [...new Set(selected)].sort((a, b) => a - b)
     const previousSteps = channel.steps.slice(0, channel.loopLength)
     const hasRhythm = previousSteps.length > 0
-    const activeSteps = hasRhythm
+    const activeSteps = !hadNotes
+      ? Array.from({ length: channel.loopLength }, () => true)
+      : hasRhythm
       ? previousSteps.map(step => stepNotes(step).length > 0)
       : Array.from({ length: channel.loopLength }, () => true)
     let notePosition = 0
