@@ -39,11 +39,21 @@
       @select-output="(id)=>{ selectedOutputId = id }" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @update-octave="updateArpeggioOctave" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
       @update-arpeggio-length="updateArpeggioLength" @update-global-key="updateGlobalKey" @global-variation="createGlobalVariation" @channel-variation="() => createVariation(currentIndex)"
       @store-state="storeCurrentState" @apply-stored-state="applyStoredState" />
+
+    <section class="seed-panel module">
+      <h2>SEED</h2>
+      <textarea v-model="seedKey" aria-label="Seed key" placeholder="Generate a seed key or paste one here"></textarea>
+      <div class="seed-actions">
+        <button class="seed-generate" @click="seedKey = createSeed(); seedStatus = 'Seed generated'">Generate</button>
+        <button class="seed-load" @click="seedStatus = loadSeed(seedKey) ?? 'Seed loaded'">Load</button>
+        <span v-if="seedStatus" class="seed-status">{{ seedStatus }}</span>
+      </div>
+    </section>
   </main>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import ChannelsBar from './components/ChannelsBar.vue'
 import ArpeggiatorPanel from './components/ArpeggiatorPanel.vue'
 import { useChannels } from './useChannels'
@@ -91,8 +101,13 @@ const {
   currentActiveStoredStateIndex,
   storeCurrentState,
   applyStoredState,
+  createSeed,
+  loadSeed,
   copyChannel
 } = useChannels()
+
+const seedKey = ref('')
+const seedStatus = ref('')
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.repeat) return
@@ -179,9 +194,27 @@ h2 { color: var(--text-muted); font-size: .7rem; letter-spacing: .16em; }
   border: 1px solid var(--coral); border-radius: 5px; padding: .7rem 1rem; background: var(--coral-deep);
   color: var(--coral-soft); font-size: .65rem; font-weight: 800; letter-spacing: .1em; cursor: pointer;
 }
+.seed-panel { margin-top: 1rem; padding: 1rem 1.25rem; }
+.seed-panel h2 { margin-bottom: .7rem; color: var(--teal); }
+.seed-panel textarea {
+  display: block; width: 100%; min-height: 4rem; resize: vertical;
+  border: 1px solid var(--line-strong); border-radius: 4px; padding: .6rem;
+  background: var(--bg-control); color: var(--text); font: .7rem ui-monospace, monospace;
+}
+.seed-panel textarea:focus { border-color: var(--teal); outline: none; box-shadow: 0 0 0 2px rgba(104, 216, 195, .12); }
+.seed-actions { display: flex; align-items: center; gap: .6rem; margin-top: .7rem; }
+.seed-actions button {
+  border: 1px solid var(--line-strong); border-radius: 4px; padding: .5rem .8rem;
+  color: var(--text); background: var(--bg-raised); font-size: .62rem; font-weight: 800;
+  letter-spacing: .08em; cursor: pointer;
+}
+.seed-actions .seed-generate { border-color: var(--teal); color: var(--teal-soft); background: var(--teal-deep); }
+.seed-actions .seed-load { border-color: var(--lavender); color: var(--lavender-soft); background: var(--lavender-deep); }
+.seed-status { color: var(--text-muted); font-size: .62rem; }
 @media (max-width: 650px) {
   .instrument { width: min(100% - 1rem, 1180px); margin-top: 1rem; }
   .instrument-header, .global-controls { align-items: flex-start; flex-direction: column; gap: 1rem; }
   .global-controls { padding: 1rem; }
+  .seed-actions { align-items: flex-start; flex-direction: column; }
 }
 </style>

@@ -6,6 +6,22 @@ import { isSustainedStep, Pattern, stepNotes, StepValue } from './models/arpeggi
 import { ARPEGGIO_OCTAVES, CHANNEL_COUNT, CHORD_NOTE_CHANGE_PROBABILITY, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds, STORED_STATE_COUNT } from './config'
 import { MIDI } from './midi/constants'
 
+const SEED_PREFIX = 'ARP1-'
+
+interface SeedChannelState extends StoredArpeggiatorState {
+  midiChannel: number
+}
+
+interface AppSeed {
+  version: 1
+  globalBpm: number
+  globalKey: CircleOfFifthsKey
+  currentIndex: number
+  channels: SeedChannelState[]
+  storedStates: (StoredArpeggiatorState | null)[][]
+  activeStoredStateIndexes: (number | null)[]
+}
+
 export function useChannels() {
   const log = ref<string[]>([])
   const outputs = ref<{id:string,name:string}[]>([])
@@ -452,18 +468,96 @@ export function useChannels() {
     }
   }
 
-  function storeCurrentState() {
-    const channelIndex = currentIndex.value
-    const selectedIndex = activeStoredStateIndexes.value[channelIndex] ?? 0
-    storedStates.value[channelIndex][selectedIndex] = snapshotChannelState(currentChannel.value)
+  function cloneStoredState(state: StoredArpeggiatorState | null): StoredArpeggiatorState | null {
+    if (!state) return null
+    return {
+      ...state,
+      notes: state.notes.slice(),
+      steps: state.steps.map(cloneStep)
+    }
   }
 
-  function applyStoredState(index: number) {
-    const state = storedStates.value[currentIndex.value][index]
-    activeStoredStateIndexes.value[currentIndex.value] = index
-    if (!state) return
+  function snapshotSeedChannel(channel: typeof channels[number]): SeedChannelState {
+    return {
+      ...snapshotChannelState(channel),
+      midiChannel: channel.midiChannel
+    }
+  }
 
-    const channel = currentChannel.value
+  function createSeed(): string {
+    const seed: AppSeed = {
+      version: 1,
+      globalBpm: globalBpm.value,
+      globalKey: globalKey.value,
+      currentIndex: currentIndex.value,
+      channels: channels.map(snapshotSeedChannel),
+      storedStates: storedStates.value.map(states => states.map(cloneStoredState)),
+      activeStoredStateIndexes: activeStoredStateIndexes.value.slice()
+    }
+    return `${SEED_PREFIX}${btoa(JSON.stringify(seed))}`
+  }
+
+  function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null
+  }
+
+  function isStepValue(value: unknown): value is StepValue {
+    if (typeof value === 'number') return Number.isFinite(value)
+    if (Array.isArray(value)) return value.every(note => typeof note === 'number' && Number.isFinite(note))
+    if (!isRecord(value)) return false
+    const notes = value.notes
+    return (typeof notes === 'number' || (Array.isArray(notes) && notes.every(note => typeof note === 'number' && Number.isFinite(note)))) &&
+      typeof value.duration === 'number' && Number.isFinite(value.duration) && value.duration >= 1
+  }
+
+  function isStoredState(value: unknown): value is StoredArpeggiatorState {
+    if (!isRecord(value)) return false
+    return typeof value.bpm === 'number' && Number.isFinite(value.bpm) &&
+      typeof value.tempoOffset === 'number' && Number.isFinite(value.tempoOffset) &&
+      typeof value.pattern === 'string' && ['up', 'down', 'updown', 'random'].includes(value.pattern) &&
+      typeof value.noteLength === 'number' && Number.isFinite(value.noteLength) &&
+      Array.isArray(value.notes) && value.notes.every(note => typeof note === 'number' && Number.isFinite(note)) &&
+      Array.isArray(value.steps) && value.steps.every(isStepValue) &&
+      typeof value.base === 'number' && Number.isFinite(value.base) &&
+      typeof value.octave === 'number' && Number.isFinite(value.octave) &&
+      typeof value.loopLength === 'number' && Number.isFinite(value.loopLength) &&
+      typeof value.arpeggioLength === 'number' && Number.isFinite(value.arpeggioLength) &&
+      typeof value.quantisation === 'number' && Number.isFinite(value.quantisation) &&
+      typeof value.key === 'string' && CIRCLE_OF_FIFTHS_KEYS.some(key => key.name === value.key)
+  }
+
+  function isSeedChannel(value: unknown): value is SeedChannelState {
+    return isStoredState(value) && isRecord(value) &&
+      typeof value.midiChannel === 'number' && Number.isInteger(value.midiChannel) &&
+      value.midiChannel >= 1 && value.midiChannel <= 16
+  }
+
+  function decodeSeed(seedKey: string): AppSeed | null {
+    if (!seedKey.startsWith(SEED_PREFIX)) return null
+    try {
+      const value: unknown = JSON.parse(atob(seedKey.slice(SEED_PREFIX.length)))
+      if (!isRecord(value) ||
+          value.version !== 1 ||
+          typeof value.globalBpm !== 'number' || !Number.isFinite(value.globalBpm) ||
+          typeof value.globalKey !== 'string' ||
+          !CIRCLE_OF_FIFTHS_KEYS.some(key => key.name === value.globalKey) ||
+          typeof value.currentIndex !== 'number' || !Number.isInteger(value.currentIndex) ||
+          !Array.isArray(value.channels) || value.channels.length !== channels.length ||
+          !value.channels.every(isSeedChannel) ||
+          !Array.isArray(value.storedStates) || value.storedStates.length !== channels.length ||
+          !value.storedStates.every(states => Array.isArray(states) && states.length === STORED_STATE_COUNT && states.every(state => state === null || isStoredState(state))) ||
+          !Array.isArray(value.activeStoredStateIndexes) || value.activeStoredStateIndexes.length !== channels.length ||
+          !value.activeStoredStateIndexes.every(index => index === null || (typeof index === 'number' && Number.isInteger(index) && index >= 0 && index < STORED_STATE_COUNT)) ||
+          value.currentIndex < 0 || value.currentIndex >= channels.length) {
+        return null
+      }
+      return value as unknown as AppSeed
+    } catch {
+      return null
+    }
+  }
+
+  function applyChannelState(channel: typeof channels[number], state: StoredArpeggiatorState) {
     channel.bpm = state.bpm
     channel.tempoOffset = state.tempoOffset
     channel.pattern = state.pattern
@@ -486,6 +580,37 @@ export function useChannels() {
     channel.arpeggiator.setSteps(channel.steps)
   }
 
+  function loadSeed(seedKey: string): string | null {
+    const seed = decodeSeed(seedKey.trim())
+    if (!seed) return 'Invalid seed key'
+
+    setGlobalBpm(seed.globalBpm)
+    updateGlobalKey(seed.globalKey)
+    seed.channels.forEach((state, index) => {
+      const channel = channels[index]
+      channel.midiChannel = state.midiChannel
+      applyChannelState(channel, state)
+    })
+    storedStates.value = seed.storedStates.map(states => states.map(cloneStoredState))
+    activeStoredStateIndexes.value = seed.activeStoredStateIndexes.slice()
+    currentIndex.value = seed.currentIndex
+    return null
+  }
+
+  function storeCurrentState() {
+    const channelIndex = currentIndex.value
+    const selectedIndex = activeStoredStateIndexes.value[channelIndex] ?? 0
+    storedStates.value[channelIndex][selectedIndex] = snapshotChannelState(currentChannel.value)
+  }
+
+  function applyStoredState(index: number) {
+    const state = storedStates.value[currentIndex.value][index]
+    activeStoredStateIndexes.value[currentIndex.value] = index
+    if (!state) return
+
+    applyChannelState(currentChannel.value, state)
+  }
+
   function copyChannel(sourceIndex: number, targetIndex: number) {
     const source = channels[sourceIndex]
     const target = channels[targetIndex]
@@ -503,6 +628,8 @@ export function useChannels() {
     target.arpeggioLength = source.arpeggioLength
     target.quantisation = source.quantisation
     target.key = source.key
+    storedStates.value[targetIndex] = storedStates.value[sourceIndex].map(cloneStoredState)
+    activeStoredStateIndexes.value[targetIndex] = activeStoredStateIndexes.value[sourceIndex]
 
     target.arpeggiator.setBpm(target.bpm)
     target.arpeggiator.setPattern(target.pattern)
@@ -577,6 +704,8 @@ export function useChannels() {
     currentActiveStoredStateIndex,
     storeCurrentState,
     applyStoredState,
+    createSeed,
+    loadSeed,
     copyChannel,
   }
 }
