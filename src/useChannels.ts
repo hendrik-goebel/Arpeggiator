@@ -3,7 +3,7 @@ import { initMidi, listOutputs, listInputs, getOutput, getInput, selectOutput, s
 import { createMidiClockInput, createMidiClockOutput } from './midi/clockSync'
 import { createChannel } from './models/channel'
 import { isSustainedStep, Pattern, stepNotes, StepValue } from './models/arpeggiator'
-import { CHANNEL_COUNT, CHORD_NOTE_CHANGE_PROBABILITY, DEFAULT_BASE, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds } from './config'
+import { ARPEGGIO_OCTAVES, CHANNEL_COUNT, CHORD_NOTE_CHANGE_PROBABILITY, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds } from './config'
 import { MIDI } from './midi/constants'
 
 export function useChannels() {
@@ -211,7 +211,8 @@ export function useChannels() {
   function createVariation(index: number) {
     const channel = channels[index]
     const keyPitchClass = CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
-    const keyPitches = MAJOR_SCALE_OFFSETS.map(offset => DEFAULT_BASE + ((keyPitchClass + offset) % 12))
+    const octaveBase = 12 * (channel.octave + 1)
+    const keyPitches = MAJOR_SCALE_OFFSETS.map(offset => octaveBase + ((keyPitchClass + offset) % 12))
     const length = Math.max(1, Math.min(32, Math.floor(channel.arpeggioLength)))
     const shuffled = keyPitches.sort(() => Math.random() - 0.5)
     const selected = shuffled.slice(0, Math.min(length, shuffled.length))
@@ -248,7 +249,7 @@ export function useChannels() {
       return [...new Set(variedChord)].sort((a, b) => a - b)
     }
 
-    channel.base = DEFAULT_BASE
+    channel.base = octaveBase
     channel.notes = [...new Set(selected)].sort((a, b) => a - b)
     const previousSteps = channel.steps.slice(0, channel.loopLength)
     const hasRhythm = previousSteps.length > 0
@@ -297,9 +298,11 @@ export function useChannels() {
       const pattern = patterns[Math.floor(Math.random() * patterns.length)]
       const quantisation = quantisations[Math.floor(Math.random() * quantisations.length)]
       const noteLength = NOTE_LENGTH_OPTIONS[Math.floor(Math.random() * NOTE_LENGTH_OPTIONS.length)]
+      const octave = ARPEGGIO_OCTAVES[Math.floor(Math.random() * ARPEGGIO_OCTAVES.length)]
       channel.pattern = pattern
       channel.quantisation = quantisation
       channel.noteLength = noteLength
+      channel.octave = octave
       channel.arpeggiator.setPattern(pattern)
       channel.arpeggiator.setSubdivision(quantisation)
       channel.arpeggiator.setNoteLength(noteLength)
@@ -386,6 +389,33 @@ export function useChannels() {
     if (typeof channel.arpeggiator.setSubdivision === 'function') channel.arpeggiator.setSubdivision(newQ)
   }
 
+  function updateArpeggioOctave(octave: number) {
+    const channel = currentChannel.value
+    const nextOctave = Math.max(1, Math.min(8, Math.floor(octave)))
+    const delta = (nextOctave - channel.octave) * 12
+    if (delta === 0) return
+
+    const transposeStep = (step: StepValue): StepValue => {
+      if (isSustainedStep(step)) {
+        return {
+          notes: Array.isArray(step.notes)
+            ? step.notes.map(note => note + delta)
+            : step.notes + delta,
+          duration: step.duration
+        }
+      }
+      if (Array.isArray(step)) return step.map(note => note + delta)
+      return step >= 0 ? step + delta : step
+    }
+
+    channel.octave = nextOctave
+    channel.base += delta
+    channel.notes = channel.notes.map(note => note + delta)
+    channel.steps = channel.steps.map(transposeStep)
+    channel.arpeggiator.setNotes(channel.notes)
+    channel.arpeggiator.setSteps(channel.steps)
+  }
+
   function setClockOutput(id: string | null) {
     clockOutputId.value = id
     midiClockOutputEnabled.value = id !== null
@@ -440,5 +470,6 @@ export function useChannels() {
     updateArpeggioLength,
     updateQuantisation,
     updateLoopLength,
+    updateArpeggioOctave,
   }
 }

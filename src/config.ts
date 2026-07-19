@@ -15,6 +15,8 @@ export const DEFAULT_STEPS = [60,64,67,60,64,67,60,64,60,64,67,60,64,67,60,64]
 export const DEFAULT_NOTES = [60,64,67]
 export const CHORD_NOTE_CHANGE_PROBABILITY = 0.5
 export const DEFAULT_BASE = 60
+export const DEFAULT_ARPEGGIO_OCTAVE = 4
+export const ARPEGGIO_OCTAVES = Array.from({ length: 8 }, (_, index) => index + 1)
 export const KEYBOARD_OCTAVE_SIZE = 12
 export const MAJOR_SCALE_OFFSETS = [0, 2, 4, 5, 7, 9, 11]
 export const CIRCLE_OF_FIFTHS_KEYS = [

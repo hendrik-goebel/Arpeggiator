@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import StepsGrid from './StepsGrid.vue'
 import LogPanel from './LogPanel.vue'
 import StepperControl from './StepperControl.vue'
-import { CIRCLE_OF_FIFTHS_KEYS, DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey } from '../config'
+import { ARPEGGIO_OCTAVES, CIRCLE_OF_FIFTHS_KEYS, DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey } from '../config'
 
 const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[], globalKey: CircleOfFifthsKey }>()
 
@@ -30,6 +30,11 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
         <label>Quantisation <StepperControl :value="channel.quantisation" :values="[1, 2, 3, 4, 5, 8, 16, 32, 64]" @update:value="$emit('update-quant', +$event)" /></label>
         <label>Loop length <span class="value-input"><input type="number" :value="channel.loopLength" @input="$emit('update-loop-length', +$event.target.value)" min="1" max="64" /><small>STEPS</small></span></label>
         <label>Note length <StepperControl :value="channel.noteLength" :values="NOTE_LENGTH_OPTIONS" @update:value="$emit('update-noteLength', +$event)" /></label>
+        <label>Octave
+          <select :value="channel.octave" @change="$emit('update-octave', +$event.target.value)">
+            <option v-for="octave in ARPEGGIO_OCTAVES" :key="octave" :value="octave">C{{ octave }}</option>
+          </select>
+        </label>
       </div>
     </div>
 
@@ -61,7 +66,7 @@ h2 { color: #effaff; font-size: 1.15rem; letter-spacing: .08em; }
 .controls { display: grid; gap: 1.25rem; margin-bottom: 1.25rem; }
 .control-section, .routing-section { border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--line); }
 .control-section { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem 1rem; padding: 1rem; background: var(--bg-raised); }
-.sequence-section { grid-template-columns: minmax(5.5rem, auto) repeat(5, minmax(0, 1fr)); align-items: end; }
+.sequence-section { grid-template-columns: minmax(5.5rem, auto) repeat(6, minmax(0, 1fr)); align-items: end; }
 .global-note-section { grid-template-columns: minmax(5.5rem, auto) auto auto; align-items: end; justify-content: start; justify-items: start; }
 .routing-section { grid-template-columns: 1fr; }
 .control-column { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem 1rem; padding: 1rem; background: var(--bg-raised); }
