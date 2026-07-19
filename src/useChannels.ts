@@ -231,32 +231,43 @@ export function useChannels() {
       notes.push(...selected)
     }
 
+    const varyChord = (chord: number[]) => {
+      const variedChord: number[] = []
+      chord.forEach(note => {
+        const shouldChange = !keyPitches.includes(note) || Math.random() < CHORD_NOTE_CHANGE_PROBABILITY
+        if (!shouldChange) {
+          variedChord.push(note)
+          return
+        }
+
+        const candidates = keyPitches.filter(candidate => candidate !== note && !variedChord.includes(candidate))
+        variedChord.push(candidates.length
+          ? candidates[Math.floor(Math.random() * candidates.length)]
+          : note)
+      })
+      return [...new Set(variedChord)].sort((a, b) => a - b)
+    }
+
     channel.base = DEFAULT_BASE
     channel.notes = [...new Set(selected)].sort((a, b) => a - b)
     const previousSteps = channel.steps.slice(0, channel.loopLength)
     const hasRhythm = previousSteps.length > 0
     const activeSteps = hasRhythm
-      ? previousSteps.map(step => (typeof step === 'number' && step >= 0) || (Array.isArray(step) && step.length > 0))
+      ? previousSteps.map(step => stepNotes(step).length > 0)
       : Array.from({ length: channel.loopLength }, () => true)
     let notePosition = 0
     const variedSteps = activeSteps.map((isActive, stepIndex) => {
       if (!isActive) return -1
       const previousStep = previousSteps[stepIndex]
+      if (isSustainedStep(previousStep)) {
+        const variedNotes = varyChord(stepNotes(previousStep))
+        return {
+          notes: variedNotes.length === 1 ? variedNotes[0] : variedNotes,
+          duration: previousStep.duration
+        }
+      }
       if (Array.isArray(previousStep)) {
-        const variedChord: number[] = []
-        previousStep.forEach(note => {
-          const shouldChange = !keyPitches.includes(note) || Math.random() < CHORD_NOTE_CHANGE_PROBABILITY
-          if (!shouldChange) {
-            variedChord.push(note)
-            return
-          }
-
-          const candidates = keyPitches.filter(candidate => candidate !== note && !variedChord.includes(candidate))
-          variedChord.push(candidates.length
-            ? candidates[Math.floor(Math.random() * candidates.length)]
-            : note)
-        })
-        return [...new Set(variedChord)].sort((a, b) => a - b)
+        return varyChord(previousStep)
       }
 
       const note = notes[notePosition % notes.length]
@@ -264,7 +275,7 @@ export function useChannels() {
       return note
     })
     channel.steps = variedSteps
-    const chordNotes = variedSteps.flatMap(step => Array.isArray(step) ? step : [])
+    const chordNotes = variedSteps.flatMap(step => stepNotes(step))
     channel.notes = [...new Set([...channel.notes, ...chordNotes])].sort((a, b) => a - b)
     channel.arpeggiator.setNotes(channel.notes)
     channel.arpeggiator.setSteps(channel.steps)
