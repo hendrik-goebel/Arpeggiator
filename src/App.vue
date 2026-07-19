@@ -19,11 +19,10 @@
     </section>
 
 
-    <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log" :synthEnabled="synthEnabled"
+    <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
       @select-output="(id)=>{ selectedOutputId = id }" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
-      @update-arpeggio-length="updateArpeggioLength"
-      @toggle-synth="toggleSynth" />
+      @update-arpeggio-length="updateArpeggioLength" />
   </main>
 </template>
 
@@ -59,9 +58,7 @@ const {
   updateNoteLength,
   updateLoopLength,
   updateArpeggioLength,
-  updateQuantisation,
-  synthEnabled,
-  toggleSynth
+  updateQuantisation
 } = useChannels()
 
 function handleKeydown(event: KeyboardEvent) {

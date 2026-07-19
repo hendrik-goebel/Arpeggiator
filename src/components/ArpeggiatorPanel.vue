@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import StepsGrid from './StepsGrid.vue'
 import LogPanel from './LogPanel.vue'
 import { DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE } from '../config'
-const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[], synthEnabled: boolean }>()
+const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
 
 const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
 const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
@@ -29,7 +29,6 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
       <div class="control-column routing">
         <label>Output <select :value="selectedOutputId" @change="$emit('select-output', $event.target.value)"><option v-for="o in outputs" :key="o.id" :value="o.id">{{ o.name }}</option></select></label>
         <div class="utility-buttons">
-          <button :class="{ active: props.synthEnabled }" @click="$emit('toggle-synth')">Synth {{ props.synthEnabled ? 'On' : 'Off' }}</button>
           <button class="clear-button" @click="$emit('clear-notes')">Clear grid</button>
         </div>
       </div>

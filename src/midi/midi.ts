@@ -3,7 +3,8 @@ import { MIDI, noteOffStatus, noteOnStatus } from './constants'
 let midiAccess: WebMidi.MIDIAccess | null = null
 let selectedOutput: WebMidi.MIDIOutput | null = null
 
-const VIRTUAL_OUTPUTS = [{ id: '__sine__', name: 'Sine Synth (internal)' }]
+export const SINE_OUTPUT_ID = '__sine__'
+const VIRTUAL_OUTPUTS = [{ id: SINE_OUTPUT_ID, name: 'Sine Synth (internal)' }]
 let sineSynthEnabled = false
 let audioContext: AudioContext | null = null
 
@@ -35,14 +36,15 @@ export function disableSineSynth() { sineSynthEnabled = false }
 
 export function listOutputs() {
   const outs: {id:string,name:string}[] = []
-  if (sineSynthEnabled) outs.push(...VIRTUAL_OUTPUTS)
-  if (!midiAccess) return outs
-  midiAccess.outputs.forEach((o:any)=> outs.push({id: o.id, name: o.name || o.manufacturer || o.id}))
+  if (midiAccess) {
+    midiAccess.outputs.forEach((o:any)=> outs.push({id: o.id, name: o.name || o.manufacturer || o.id}))
+  }
+  outs.push(...VIRTUAL_OUTPUTS)
   return outs
 }
 
 export function selectOutput(id:string) {
-  if (id === VIRTUAL_OUTPUTS[0].id) {
+  if (id === SINE_OUTPUT_ID) {
     selectedOutput = null
     return null
   }
