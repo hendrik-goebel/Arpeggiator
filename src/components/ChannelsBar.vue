@@ -9,7 +9,9 @@
         }}
       </button>
       <button class="variation-button" @click.stop="$emit('variation', i)">var</button>
-      <button class="midi-channel-button" @click.stop="$emit('cycle-midi-channel', i)" :title="`MIDI output channel ${ch.midiChannel}; click to change`">MIDI {{ ch.midiChannel }}</button>
+      <label class="midi-channel-control">MIDI channel
+        <span><input type="number" :value="ch.midiChannel" min="1" max="16" @click.stop @input.stop="$emit('update-midi-channel', i, +$event.target.value)" /><small>CH</small></span>
+      </label>
       <label class="tempo-control">Tempo
         <span><input type="number" :value="ch.bpm" min="20" max="300" @input="$emit('update-bpm', i, +$event.target.value)" /><small>BPM</small></span>
       </label>
@@ -70,11 +72,6 @@ defineProps<{ channels: any[], currentIndex: number }>()
   color: var(--lavender);
 }
 
-.channel button.midi-channel-button {
-  color: #9acbd0;
-  font-size: .55rem;
-}
-
 .tempo-control {
   display: grid;
   gap: .25rem;
@@ -99,6 +96,31 @@ defineProps<{ channels: any[], currentIndex: number }>()
 }
 .tempo-control input:focus { border-color: var(--teal); }
 .tempo-control small { margin-left: .3rem; color: var(--teal); font-size: .5rem; }
+
+.midi-channel-control {
+  display: grid;
+  gap: .25rem;
+  padding: .45rem .55rem .55rem;
+  border-top: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: .5rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+.midi-channel-control span { display: flex; align-items: center; }
+.midi-channel-control input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font: 700 .75rem ui-monospace, monospace;
+  outline: 0;
+}
+.midi-channel-control input:focus { border-color: var(--teal); }
+.midi-channel-control small { margin-left: .3rem; color: var(--teal); font-size: .5rem; }
 
 @keyframes channel-note-pulse {
   0% { box-shadow: 0 0 0 rgba(201, 79, 94, 0); }

@@ -190,9 +190,9 @@ export function useChannels() {
     channel.bpm = bpm
     channel.arpeggiator.setBpm(bpm)
   }
-  function cycleMidiChannel(index:number) {
+  function updateMidiChannel(index:number, midiChannel:number) {
     const channel = channels[index]
-    channel.midiChannel = channel.midiChannel >= 16 ? 1 : channel.midiChannel + 1
+    channel.midiChannel = Math.max(1, Math.min(16, Math.floor(midiChannel)))
   }
   function updatePattern(pattern:any){ currentChannel.value.arpeggiator.setPattern(pattern); currentChannel.value.pattern = pattern }
   function updateNoteLength(length:number){ currentChannel.value.arpeggiator.setNoteLength(length); currentChannel.value.noteLength = length }
@@ -248,7 +248,7 @@ export function useChannels() {
     enableMidi,
     log,
     updateChannelBpm,
-    cycleMidiChannel,
+    updateMidiChannel,
     updatePattern,
     updateNoteLength,
     updateArpeggioLength,

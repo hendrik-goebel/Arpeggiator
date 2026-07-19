@@ -15,7 +15,7 @@
 
 
     <section class="module channel-module">
-      <ChannelsBar :channels="channels" :currentIndex="currentIndex" @select="selectChannel" @toggle="toggleChannelPlay" @variation="createVariation" @cycle-midi-channel="cycleMidiChannel" @update-bpm="updateChannelBpm" />
+      <ChannelsBar :channels="channels" :currentIndex="currentIndex" @select="selectChannel" @toggle="toggleChannelPlay" @variation="createVariation" @update-midi-channel="updateMidiChannel" @update-bpm="updateChannelBpm" />
     </section>
 
 
@@ -44,7 +44,7 @@ const {
   selectChannel,
   toggleChannelPlay,
   createVariation,
-  cycleMidiChannel,
+  updateMidiChannel,
   togglePlay,
   toggleNote,
   cycleStep,
