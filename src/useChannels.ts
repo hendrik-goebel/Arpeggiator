@@ -416,6 +416,47 @@ export function useChannels() {
     channel.arpeggiator.setSteps(channel.steps)
   }
 
+  function copyChannel(sourceIndex: number, targetIndex: number) {
+    const source = channels[sourceIndex]
+    const target = channels[targetIndex]
+    if (!source || !target || source === target) return
+
+    const cloneStep = (step: StepValue): StepValue => {
+      if (isSustainedStep(step)) {
+        return {
+          notes: Array.isArray(step.notes) ? step.notes.slice() : step.notes,
+          duration: step.duration
+        }
+      }
+      return Array.isArray(step) ? step.slice() : step
+    }
+
+    target.bpm = source.bpm
+    target.tempoOffset = source.tempoOffset
+    target.pattern = source.pattern
+    target.noteLength = source.noteLength
+    target.notes = source.notes.slice()
+    target.steps = source.steps.map(cloneStep)
+    target.base = source.base
+    target.octave = source.octave
+    target.loopLength = source.loopLength
+    target.arpeggioLength = source.arpeggioLength
+    target.quantisation = source.quantisation
+    target.key = source.key
+
+    target.arpeggiator.setBpm(target.bpm)
+    target.arpeggiator.setPattern(target.pattern)
+    target.arpeggiator.setNoteLength(target.noteLength)
+    target.arpeggiator.setNotes(target.notes)
+    target.arpeggiator.setLoopLength(target.loopLength)
+    target.arpeggiator.setSubdivision(target.quantisation)
+    target.arpeggiator.setSteps(target.steps)
+
+    if (source.playing && target.playing) {
+      target.arpeggiator.startAlignedTo(source.arpeggiator)
+    }
+  }
+
   function setClockOutput(id: string | null) {
     clockOutputId.value = id
     midiClockOutputEnabled.value = id !== null
@@ -471,5 +512,6 @@ export function useChannels() {
     updateQuantisation,
     updateLoopLength,
     updateArpeggioOctave,
+    copyChannel,
   }
 }

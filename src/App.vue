@@ -27,7 +27,7 @@
 
 
     <section class="module channel-module">
-      <ChannelsBar :channels="channels" :currentIndex="currentIndex" @select="selectChannel" @toggle="toggleChannelPlay" @variation="createVariation" @update-key="updateChannelKey" @update-midi-channel="updateMidiChannel" @update-bpm="updateChannelBpm" />
+      <ChannelsBar :channels="channels" :currentIndex="currentIndex" @select="selectChannel" @copy-channel="copyChannel" @toggle="toggleChannelPlay" @variation="createVariation" @update-key="updateChannelKey" @update-midi-channel="updateMidiChannel" @update-bpm="updateChannelBpm" />
     </section>
 
 
@@ -83,7 +83,8 @@ const {
   updateLoopLength,
   updateArpeggioLength,
   updateQuantisation,
-  updateArpeggioOctave
+  updateArpeggioOctave,
+  copyChannel
 } = useChannels()
 
 function handleKeydown(event: KeyboardEvent) {

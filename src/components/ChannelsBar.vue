@@ -1,7 +1,7 @@
 <template>
   <div class="channels">
     <div v-for="(ch, i) in channels" :key="ch.id" class="channel" :class="{selected: i === currentIndex}">
-      <button @click="$emit('select', i)" class="ch-select" :class="{ active: ch.active }" :style="{ background: ch.active ? ch.color : '' }">
+      <button draggable="true" @click="$emit('select', i)" @dragstart="startDrag(i, $event)" @dragover.prevent @drop.prevent="dropOnChannel(i, $event)" class="ch-select" :class="{ active: ch.active }" :style="{ background: ch.active ? ch.color : '' }">
         {{ ch.name }}
       </button>
       <button @click.stop="$emit('toggle', i)" :class="{playing: ch.playing}">{{
@@ -27,7 +27,25 @@
 <script setup lang="ts">
 import { CIRCLE_OF_FIFTHS_KEYS } from '../config'
 
+const emit = defineEmits<{
+  (event: 'select', index: number): void
+  (event: 'copy-channel', sourceIndex: number, targetIndex: number): void
+}>()
+
 defineProps<{ channels: any[], currentIndex: number }>()
+
+function startDrag(index: number, event: DragEvent) {
+  event.dataTransfer?.setData('text/plain', String(index))
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy'
+}
+
+function dropOnChannel(targetIndex: number, event: DragEvent) {
+  const sourceValue = event.dataTransfer?.getData('text/plain')
+  const sourceIndex = sourceValue === undefined || sourceValue === '' ? -1 : Number(sourceValue)
+  if (Number.isInteger(sourceIndex) && sourceIndex >= 0) {
+    emit('copy-channel', sourceIndex, targetIndex)
+  }
+}
 </script>
 
 <style scoped>
