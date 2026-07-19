@@ -3,8 +3,9 @@ import { computed } from 'vue'
 import StepsGrid from './StepsGrid.vue'
 import LogPanel from './LogPanel.vue'
 import StepperControl from './StepperControl.vue'
-import { DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE } from '../config'
-const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[] }>()
+import { CIRCLE_OF_FIFTHS_KEYS, DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE, CircleOfFifthsKey } from '../config'
+
+const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[], globalKey: CircleOfFifthsKey }>()
 
 const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
 const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
@@ -13,6 +14,15 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
 <template>
   <section class="arpeggiator-panel">
     <div class="controls">
+      <div class="control-section global-note-section">
+        <h3>GLOBAL NOTES</h3>
+        <label>Global key
+          <select :value="globalKey" @change="$emit('update-global-key', $event.target.value)">
+            <option v-for="key in CIRCLE_OF_FIFTHS_KEYS" :key="key.name" :value="key.name">{{ key.name }}</option>
+          </select>
+        </label>
+        <button class="global-variation" @click="$emit('global-variation')">Var all</button>
+      </div>
       <div class="control-section sequence-section">
         <h3>SEQUENCE</h3>
         <label>Pattern <StepperControl :value="channel.pattern" :values="['up', 'down', 'updown', 'random']" @update:value="$emit('update-pattern', $event)" /></label>
@@ -52,11 +62,16 @@ h2 { color: #effaff; font-size: 1.15rem; letter-spacing: .08em; }
 .control-section, .routing-section { border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--line); }
 .control-section { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem 1rem; padding: 1rem; background: var(--bg-raised); }
 .sequence-section { grid-template-columns: minmax(5.5rem, auto) repeat(5, minmax(0, 1fr)); align-items: end; }
+.global-note-section { grid-template-columns: minmax(5.5rem, auto) auto auto; align-items: end; justify-content: start; justify-items: start; }
 .routing-section { grid-template-columns: 1fr; }
 .control-column { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem 1rem; padding: 1rem; background: var(--bg-raised); }
 .control-section h3 { grid-column: 1 / -1; color: var(--teal); }
 .sequence-section h3 { grid-column: auto; }
 .control-section label { display: grid; gap: .38rem; }
+.global-note-section h3 { grid-column: auto; color: var(--teal); }
+.global-note-section label { justify-self: start; }
+.global-note-section select { width: 5rem; }
+.global-variation { align-self: end; justify-self: start; border: 1px solid var(--lavender); border-radius: 4px; padding: .45rem .8rem; background: var(--lavender-deep); color: var(--lavender-soft); font-size: .62rem; font-weight: 800; letter-spacing: .08em; cursor: pointer; }
 .control-column h3 { grid-column: 1 / -1; color: var(--teal); }
 .control-column label { display: grid; gap: .38rem; }
 select, input { min-width: 0; box-sizing: border-box; border: 1px solid var(--line-strong); border-radius: 4px; padding: .45rem .5rem; background: var(--bg-control); color: #e7f6fb; font: 600 .75rem ui-monospace, monospace; outline: none; }
@@ -73,5 +88,5 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
 .sequencer { overflow-x: auto; }
 .section-label { display: flex; justify-content: space-between; margin: 0 0 .6rem; }
 .section-label span { color: #52636f; font-size: .55rem; }
-@media (max-width: 560px) { .arpeggiator-panel { padding: .8rem; } .sequence-section { grid-template-columns: 1fr 1fr; } .sequence-section h3 { grid-column: 1 / -1; } .routing { grid-template-columns: 1fr; } .control-column { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .arpeggiator-panel { padding: .8rem; } .global-note-section, .sequence-section { grid-template-columns: 1fr 1fr; } .global-note-section h3, .sequence-section h3 { grid-column: 1 / -1; } .routing { grid-template-columns: 1fr; } .control-column { grid-template-columns: 1fr 1fr; } }
 </style>

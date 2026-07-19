@@ -42,6 +42,11 @@ export function useChannels() {
     }
   }
 
+  function stopAll() {
+    channels.forEach(channel => channel.arpeggiator.stop())
+    globalPlaying.value = false
+  }
+
   function selectChannel(index:number){ currentIndex.value = index }
   function toggleChannelPlay(index:number){
     const channel = channels[index]
@@ -260,6 +265,7 @@ export function useChannels() {
     setGlobalBpm,
     updateGlobalKey,
     toggleGlobalPlay,
+    stopAll,
     selectChannel,
     toggleChannelPlay,
     togglePlay,
