@@ -35,7 +35,7 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
     </div>
 
     <div class="sequencer">
-      <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :key-root="channel.key" :play-step="channel.playStep" :step-count="channel.loopLength" @toggle-note="$emit('toggle-note', $event)" @toggle-step="$emit('cycle-step', $event)" />
+      <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :key-root="channel.key" :additional-notes="channel.additionalNotes" :excluded-notes="channel.excludedNotes" :play-step="channel.playStep" :step-count="channel.loopLength" @toggle-tone-material="$emit('toggle-tone-material', $event)" @toggle-step="$emit('cycle-step', $event)" />
     </div>
     <div class="state-storage">
       <button class="variation-button" @click="$emit('channel-variation')">var</button>

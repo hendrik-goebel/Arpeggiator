@@ -13,6 +13,8 @@ export interface Channel {
   playing: boolean
   muted: boolean
   notes: number[]
+  additionalNotes: number[]
+  excludedNotes: number[]
   steps: StepValue[]
   base: number
   octave: number
@@ -33,6 +35,8 @@ export interface StoredArpeggiatorState {
   pattern: Pattern
   noteLength: number
   notes: number[]
+  additionalNotes?: number[]
+  excludedNotes?: number[]
   steps: StepValue[]
   base: number
   octave: number
@@ -54,6 +58,8 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     playing: false,
     muted: false,
     notes: DEFAULT_NOTES.slice() as number[],
+    additionalNotes: [] as number[],
+    excludedNotes: [] as number[],
     steps: DEFAULT_STEPS.slice() as StepValue[],
     base: DEFAULT_BASE,
     octave: DEFAULT_ARPEGGIO_OCTAVE,

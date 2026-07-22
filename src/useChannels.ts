@@ -137,24 +137,23 @@ export function useChannels() {
     }
   }
 
-  function toggleNote(note:number){
+  function toggleToneMaterial(note: number) {
     const channel = currentChannel.value
-    const noteIndex = channel.notes.indexOf(note)
-    if (noteIndex === -1) {
-      channel.notes = [...channel.notes, note].sort((a,b)=>a-b)
+    const keyPitchClass = CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
+    const keyPitchClasses = new Set(MAJOR_SCALE_OFFSETS.map(offset => (keyPitchClass + offset) % 12))
+    const isKeyNote = keyPitchClasses.has(note % 12)
+    const isExcluded = channel.excludedNotes.includes(note)
+    const isAdditional = channel.additionalNotes.includes(note)
+
+    if (isExcluded) {
+      channel.excludedNotes = channel.excludedNotes.filter(candidate => candidate !== note)
+    } else if (isKeyNote) {
+      channel.excludedNotes = [...channel.excludedNotes, note].sort((a, b) => a - b)
+    } else if (isAdditional) {
+      channel.additionalNotes = channel.additionalNotes.filter(candidate => candidate !== note)
     } else {
-      channel.notes = channel.notes.filter((x:any)=>x!==note)
-      // replace any matching step note values with -1 (rest)
-      channel.steps = channel.steps.map((stepValue): StepValue => {
-        if (stepValue === note) return -1
-        const remaining = stepNotes(stepValue).filter(stepNote => stepNote !== note)
-        if (remaining.length === 0) return -1
-        if (isSustainedStep(stepValue)) return { notes: remaining.length === 1 ? remaining[0] : remaining, duration: stepValue.duration }
-        return remaining.length === 1 ? remaining[0] : remaining
-      })
+      channel.additionalNotes = [...channel.additionalNotes, note].sort((a, b) => a - b)
     }
-    channel.arpeggiator.setNotes(channel.notes)
-    channel.arpeggiator.setSteps(channel.steps)
   }
 
   function cycleStep(payload:any){
@@ -248,11 +247,21 @@ export function useChannels() {
     const keyPitchClass = CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
     const octaveBase = 12 * (channel.octave + 1)
     const keyPitches = MAJOR_SCALE_OFFSETS.map(offset => octaveBase + ((keyPitchClass + offset) % 12))
+    const toneMaterials = [...new Set([...keyPitches, ...channel.additionalNotes])]
+      .filter(note => !channel.excludedNotes.includes(note))
+      .sort((a, b) => a - b)
+    if (!toneMaterials.length) {
+      channel.notes = []
+      channel.steps = Array.from({ length: channel.loopLength }, () => -1)
+      channel.arpeggiator.setNotes(channel.notes)
+      channel.arpeggiator.setSteps(channel.steps)
+      return
+    }
     const length = Math.max(1, Math.min(32, Math.floor(channel.arpeggioLength)))
-    const shuffled = keyPitches.sort(() => Math.random() - 0.5)
+    const shuffled = toneMaterials.slice().sort(() => Math.random() - 0.5)
     const selected = shuffled.slice(0, Math.min(length, shuffled.length))
     while (selected.length < length) {
-      selected.push(keyPitches[Math.floor(Math.random() * keyPitches.length)])
+      selected.push(toneMaterials[Math.floor(Math.random() * toneMaterials.length)])
     }
     selected.sort((a, b) => a - b)
     const notes: number[] = []
@@ -270,13 +279,13 @@ export function useChannels() {
     const varyChord = (chord: number[]) => {
       const variedChord: number[] = []
       chord.forEach(note => {
-        const shouldChange = !keyPitches.includes(note) || Math.random() < CHORD_NOTE_CHANGE_PROBABILITY
+        const shouldChange = !toneMaterials.includes(note) || Math.random() < CHORD_NOTE_CHANGE_PROBABILITY
         if (!shouldChange) {
           variedChord.push(note)
           return
         }
 
-        const candidates = keyPitches.filter(candidate => candidate !== note && !variedChord.includes(candidate))
+        const candidates = toneMaterials.filter(candidate => candidate !== note && !variedChord.includes(candidate))
         variedChord.push(candidates.length
           ? candidates[Math.floor(Math.random() * candidates.length)]
           : note)
@@ -457,6 +466,8 @@ export function useChannels() {
     channel.octave = nextOctave
     channel.base += delta
     channel.notes = channel.notes.map(note => note + delta)
+    channel.additionalNotes = channel.additionalNotes.map(note => note + delta)
+    channel.excludedNotes = channel.excludedNotes.map(note => note + delta)
     channel.steps = channel.steps.map(transposeStep)
     channel.arpeggiator.setNotes(channel.notes)
     channel.arpeggiator.setSteps(channel.steps)
@@ -483,6 +494,8 @@ export function useChannels() {
     }
 
     channel.notes = channel.notes.map(shiftPitch)
+    channel.additionalNotes = [...new Set(channel.additionalNotes.map(shiftPitch))].sort((a, b) => a - b)
+    channel.excludedNotes = [...new Set(channel.excludedNotes.map(shiftPitch))].sort((a, b) => a - b)
     channel.steps = channel.steps.map(shiftStep)
     channel.arpeggiator.setNotes(channel.notes)
     channel.arpeggiator.setSteps(channel.steps)
@@ -513,6 +526,8 @@ export function useChannels() {
       pattern: channel.pattern,
       noteLength: channel.noteLength,
       notes: channel.notes.slice(),
+      additionalNotes: channel.additionalNotes.slice(),
+      excludedNotes: channel.excludedNotes.slice(),
       steps: channel.steps.map(cloneStep),
       base: channel.base,
       octave: channel.octave,
@@ -528,6 +543,8 @@ export function useChannels() {
     return {
       ...state,
       notes: state.notes.slice(),
+      additionalNotes: state.additionalNotes?.slice(),
+      excludedNotes: state.excludedNotes?.slice(),
       steps: state.steps.map(cloneStep)
     }
   }
@@ -573,6 +590,8 @@ export function useChannels() {
       typeof value.pattern === 'string' && ['up', 'down', 'updown', 'random'].includes(value.pattern) &&
       typeof value.noteLength === 'number' && Number.isFinite(value.noteLength) &&
       Array.isArray(value.notes) && value.notes.every(note => typeof note === 'number' && Number.isFinite(note)) &&
+      (!('additionalNotes' in value) || (Array.isArray(value.additionalNotes) && value.additionalNotes.every(note => typeof note === 'number' && Number.isFinite(note)))) &&
+      (!('excludedNotes' in value) || (Array.isArray(value.excludedNotes) && value.excludedNotes.every(note => typeof note === 'number' && Number.isFinite(note)))) &&
       Array.isArray(value.steps) && value.steps.every(isStepValue) &&
       typeof value.base === 'number' && Number.isFinite(value.base) &&
       typeof value.octave === 'number' && Number.isFinite(value.octave) &&
@@ -620,6 +639,8 @@ export function useChannels() {
     channel.pattern = state.pattern
     channel.noteLength = state.noteLength
     channel.notes = state.notes.slice()
+    channel.additionalNotes = state.additionalNotes?.slice() ?? []
+    channel.excludedNotes = state.excludedNotes?.slice() ?? []
     channel.steps = state.steps.map(cloneStep)
     channel.base = state.base
     channel.octave = state.octave
@@ -694,6 +715,8 @@ export function useChannels() {
     target.pattern = source.pattern
     target.noteLength = source.noteLength
     target.notes = source.notes.slice()
+    target.additionalNotes = source.additionalNotes.slice()
+    target.excludedNotes = source.excludedNotes.slice()
     target.steps = source.steps.map(cloneStep)
     target.base = source.base
     target.octave = source.octave
@@ -751,7 +774,7 @@ export function useChannels() {
     toggleMute,
     toggleMuteAll,
     togglePlay,
-    toggleNote,
+    toggleToneMaterial,
     cycleStep,
     clearNotes,
     createVariation,

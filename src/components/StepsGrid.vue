@@ -5,8 +5,8 @@
     <div v-for="i in stepCountArray" :key="i-1" class="step-col header-cell" :class="{playing: props.playStep === (i-1)}">{{ i }}</div>
     </div>
 
-    <div v-for="(note, noteIndex) in notes" :key="note" class="row" :class="{ 'in-key': isKeyNote(note) }">
-      <div class="note-col" @click="$emit('toggle-note', note)">{{ noteName(note) }}</div>
+    <div v-for="note in notes" :key="note" class="row" :class="{ 'in-key': isKeyNote(note) && !isExcludedNote(note), 'additional-note': isAdditionalNote(note), 'excluded-note': isExcludedNote(note) }">
+      <button type="button" class="note-col" :class="{ selected: isSelectedNote(note) }" @click="$emit('toggle-tone-material', note)">{{ noteName(note) }}</button>
       <div v-for="stepIndex in stepCountArray" :key="stepIndex-1" class="step-col"
            :class="{active: isStepActive(stepIndex - 1, note), sustained: isSustainedSource(stepIndex - 1, note), 'sustain-continuation': isSustainedContinuation(stepIndex - 1, note), playing: props.playStep === (stepIndex-1)}"
            @click="toggleStep(stepIndex - 1, note, $event)"></div>
@@ -19,10 +19,10 @@ import { computed } from 'vue'
 import { CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_NAMES, OCTAVE_OFFSET, DEFAULT_BASE, MAJOR_SCALE_OFFSETS } from '../config'
 import { isSustainedStep, StepValue, stepNotes } from '../models/arpeggiator'
 
-const props = defineProps<{ notes: number[], steps: StepValue[] | undefined, base?: number, keyRoot?: string, playStep?: number, stepCount?: number }>()
+const props = defineProps<{ notes: number[], steps: StepValue[] | undefined, base?: number, keyRoot?: string, additionalNotes?: number[], excludedNotes?: number[], playStep?: number, stepCount?: number }>()
 
 const emit = defineEmits<{
-  (event: 'toggle-note', note: number): void
+  (event: 'toggle-tone-material', note: number): void
   (event: 'toggle-step', payload: { step: number, note: number, add: boolean }): void
 }>()
 
@@ -42,6 +42,18 @@ function noteName(n:number){
 
 function isKeyNote(note: number) {
   return keyPitchClasses.value.has(note % 12)
+}
+
+function isAdditionalNote(note: number) {
+  return props.additionalNotes?.includes(note) ?? false
+}
+
+function isExcludedNote(note: number) {
+  return props.excludedNotes?.includes(note) ?? false
+}
+
+function isSelectedNote(note: number) {
+  return !isExcludedNote(note) && (isKeyNote(note) || isAdditionalNote(note))
 }
 
 function isStepActive(step: number, note: number) {
@@ -78,7 +90,12 @@ function toggleStep(step: number, note: number, event: MouseEvent) {
 .steps-grid { display: inline-block; min-width: 100%; border: 1px solid var(--line); padding: 7px; border-radius: 6px; background: var(--bg-control); }
 .row { display: flex; align-items: center }
 .row.in-key .note-col, .row.in-key .step-col { background-color: rgba(104, 216, 195, .08); }
-.note-col { width: 72px; padding: 8px; border-right: 1px solid var(--line); color: #a9bac4; cursor: pointer; font: 700 .68rem ui-monospace, monospace; }
+.row.additional-note .note-col { background-color: rgba(181, 185, 239, .14); }
+.row.excluded-note .note-col { background-color: transparent; color: #71828c; text-decoration: line-through; }
+.note-col { width: 72px; padding: 8px; border: 0; border-right: 1px solid var(--line); background: transparent; color: #a9bac4; cursor: pointer; font: 700 .68rem ui-monospace, monospace; text-align: left; }
+.note-col:hover, .note-col:focus-visible { background-color: rgba(181, 185, 239, .14); outline: none; }
+.note-col.selected { color: var(--teal-soft); }
+.row.additional-note .note-col.selected { color: var(--lavender-soft); }
 .header-cell { color: var(--text-dim); font-size: .65rem; font-weight: 700; transition: color .18s ease, text-shadow .24s ease; }
 .step-col { width: 34px; height: 30px; margin: 4px; border: 1px solid var(--line); border-radius: 3px; background: #14232b; cursor: pointer; transition: background .12s, border-color .16s ease, box-shadow .22s ease, transform .16s ease; }
 .step-col:hover { border-color: var(--teal); }
