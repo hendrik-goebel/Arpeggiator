@@ -669,6 +669,21 @@ export function useChannels() {
     applyChannelState(currentChannel.value, state)
   }
 
+  function storeAllStates() {
+    channels.forEach((channel, channelIndex) => {
+      const selectedIndex = activeStoredStateIndexes.value[channelIndex] ?? 0
+      storedStates.value[channelIndex][selectedIndex] = snapshotChannelState(channel)
+    })
+  }
+
+  function applyAllStoredStates(index: number) {
+    channels.forEach((channel, channelIndex) => {
+      activeStoredStateIndexes.value[channelIndex] = index
+      const state = storedStates.value[channelIndex][index]
+      if (state) applyChannelState(channel, state)
+    })
+  }
+
   function copyChannel(sourceIndex: number, targetIndex: number) {
     const source = channels[sourceIndex]
     const target = channels[targetIndex]
@@ -768,6 +783,8 @@ export function useChannels() {
     currentActiveStoredStateIndex,
     storeCurrentState,
     applyStoredState,
+    storeAllStates,
+    applyAllStoredStates,
     createSeed,
     loadSeed,
     copyChannel,

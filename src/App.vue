@@ -33,7 +33,7 @@
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
       @select-output="(id)=>{ selectedOutputId = id }" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @update-octave="updateArpeggioOctave" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
       @update-arpeggio-length="updateArpeggioLength" @channel-variation="handleVariation" @shift-notes="handleShiftNotes" @toggle-global-actions="globalActions = !globalActions"
-      @store-state="storeCurrentState" @apply-stored-state="applyStoredState"
+      @store-state="handleStoreState" @apply-stored-state="handleApplyStoredState"
       @set-clock-output="setClockOutput" @set-clock-input="setClockInput" />
 
     <section class="seed-panel module">
@@ -103,6 +103,8 @@ const {
   currentActiveStoredStateIndex,
   storeCurrentState,
   applyStoredState,
+  storeAllStates,
+  applyAllStoredStates,
   createSeed,
   loadSeed,
   copyChannel
@@ -120,6 +122,16 @@ function handleVariation() {
 function handleShiftNotes(direction: 1 | -1) {
   if (globalActions.value) shiftAllChannelNotes(direction)
   else shiftCurrentChannelNotes(direction)
+}
+
+function handleStoreState() {
+  if (globalActions.value) storeAllStates()
+  else storeCurrentState()
+}
+
+function handleApplyStoredState(index: number) {
+  if (globalActions.value) applyAllStoredStates(index)
+  else applyStoredState(index)
 }
 
 useKeyboard({
