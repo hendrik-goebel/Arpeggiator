@@ -9,6 +9,7 @@ interface KeyboardHandlers {
   togglePlay: () => void
   createVariation: (index: number) => void
   createGlobalVariation: () => void
+  shiftCurrentChannelNotes: (direction: 1 | -1) => void
   playKeyboardNote: (key: string) => boolean
 }
 
@@ -43,6 +44,11 @@ export function useKeyboard(handlers: KeyboardHandlers) {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         const direction = event.key === 'ArrowLeft' ? -1 : 1
         handlers.selectChannel((handlers.currentIndex.value + direction + handlers.channelCount) % handlers.channelCount)
+        event.preventDefault()
+        return
+      }
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        handlers.shiftCurrentChannelNotes(event.key === 'ArrowUp' ? 1 : -1)
         event.preventDefault()
         return
       }

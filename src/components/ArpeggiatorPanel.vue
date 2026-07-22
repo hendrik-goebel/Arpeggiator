@@ -39,6 +39,8 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
     </div>
     <div class="state-storage">
       <button class="variation-button" @click="$emit('channel-variation')">var</button>
+      <button class="variation-button" aria-label="Move arpeggio notes up" @click="$emit('shift-notes', 1)">up</button>
+      <button class="variation-button" aria-label="Move arpeggio notes down" @click="$emit('shift-notes', -1)">down</button>
       <button class="store-button" @click="$emit('store-state')">Store state</button>
       <div class="stored-states">
         <button

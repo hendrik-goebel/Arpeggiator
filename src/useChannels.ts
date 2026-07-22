@@ -462,6 +462,32 @@ export function useChannels() {
     channel.arpeggiator.setSteps(channel.steps)
   }
 
+  function shiftCurrentChannelNotes(direction: 1 | -1) {
+    const channel = currentChannel.value
+    const keyPitchClass = CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
+    const scalePitchClasses = MAJOR_SCALE_OFFSETS.map(offset => (keyPitchClass + offset) % 12)
+    const shiftPitch = (pitch: number) => {
+      let shifted = pitch
+      do {
+        shifted += direction
+      } while (!scalePitchClasses.includes((shifted % 12 + 12) % 12))
+      return shifted
+    }
+    const shiftStep = (step: StepValue): StepValue => {
+      if (typeof step === 'number') return step >= 0 ? shiftPitch(step) : step
+      if (Array.isArray(step)) return step.map(shiftPitch)
+      if (isSustainedStep(step)) {
+        return { ...step, notes: Array.isArray(step.notes) ? step.notes.map(shiftPitch) : shiftPitch(step.notes) }
+      }
+      return step
+    }
+
+    channel.notes = channel.notes.map(shiftPitch)
+    channel.steps = channel.steps.map(shiftStep)
+    channel.arpeggiator.setNotes(channel.notes)
+    channel.arpeggiator.setSteps(channel.steps)
+  }
+
   function cloneStep(step: StepValue): StepValue {
     if (isSustainedStep(step)) {
       return {
@@ -727,6 +753,7 @@ export function useChannels() {
     updateQuantisation,
     updateLoopLength,
     updateArpeggioOctave,
+    shiftCurrentChannelNotes,
     storedStates,
     currentStoredStates,
     currentActiveStoredStateIndex,

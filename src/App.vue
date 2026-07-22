@@ -32,7 +32,7 @@
       :active-stored-state-index="currentActiveStoredStateIndex"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
       @select-output="(id)=>{ selectedOutputId = id }" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @update-octave="updateArpeggioOctave" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
-      @update-arpeggio-length="updateArpeggioLength" @channel-variation="() => createVariation(currentIndex)"
+      @update-arpeggio-length="updateArpeggioLength" @channel-variation="() => createVariation(currentIndex)" @shift-notes="shiftCurrentChannelNotes"
       @store-state="storeCurrentState" @apply-stored-state="applyStoredState"
       @set-clock-output="setClockOutput" @set-clock-input="setClockInput" />
 
@@ -97,6 +97,7 @@ const {
   updateArpeggioLength,
   updateQuantisation,
   updateArpeggioOctave,
+  shiftCurrentChannelNotes,
   currentStoredStates,
   currentActiveStoredStateIndex,
   storeCurrentState,
@@ -118,6 +119,7 @@ useKeyboard({
   togglePlay,
   createVariation,
   createGlobalVariation,
+  shiftCurrentChannelNotes,
   playKeyboardNote
 })
 onMounted(() => {
