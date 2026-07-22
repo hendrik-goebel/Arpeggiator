@@ -3,7 +3,7 @@ import { initMidi, listOutputs, listInputs, getOutput, getInput, selectOutput, s
 import { createMidiClockInput, createMidiClockOutput } from './midi/clockSync'
 import { createChannel, StoredArpeggiatorState } from './models/channel'
 import { isSustainedStep, Pattern, stepNotes, StepValue } from './models/arpeggiator'
-import { ARPEGGIO_OCTAVES, CHANNEL_COUNT, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds, STORED_STATE_COUNT } from './config'
+import { ARPEGGIO_OCTAVES, CHANNEL_COUNT, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, MICROTONAL_STEP, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds, STORED_STATE_COUNT } from './config'
 import { MIDI } from './midi/constants'
 
 const SEED_PREFIX = 'ARP1-'
@@ -54,6 +54,32 @@ export function useChannels() {
     onStart: () => { if (!globalPlaying.value) toggleGlobalPlay() },
     onStop: () => { if (globalPlaying.value) stopAll() }
   })
+
+  function getKeyPitchClass(channel: typeof channels[number]) {
+    return CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
+  }
+
+  function getToneMaterials(channel: typeof channels[number]) {
+    const octaveBase = 12 * (channel.octave + 1)
+    const keyPitchClass = getKeyPitchClass(channel)
+    const keyPitches = MAJOR_SCALE_OFFSETS.map(offset => octaveBase + ((keyPitchClass + offset) % 12))
+    const microtonePitches = channel.microtonesEnabled
+      ? keyPitches.map(note => note + MICROTONAL_STEP)
+      : []
+    return [...new Set([...keyPitches, ...microtonePitches, ...channel.additionalNotes])]
+      .filter(note => !channel.excludedNotes.includes(note))
+      .sort((a, b) => a - b)
+  }
+
+  function isKeyTone(channel: typeof channels[number], note: number) {
+    const octaveBase = 12 * (channel.octave + 1)
+    const keyPitchClass = getKeyPitchClass(channel)
+    const keyPitches = MAJOR_SCALE_OFFSETS.flatMap(offset => {
+      const pitch = octaveBase + ((keyPitchClass + offset) % 12)
+      return channel.microtonesEnabled ? [pitch, pitch + MICROTONAL_STEP] : [pitch]
+    })
+    return keyPitches.some(candidate => Math.abs(candidate - note) < 1e-9)
+  }
 
   function setGlobalBpm(bpm:number){
     globalBpm.value = bpm
@@ -140,9 +166,7 @@ export function useChannels() {
 
   function toggleToneMaterial(note: number) {
     const channel = currentChannel.value
-    const keyPitchClass = CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
-    const keyPitchClasses = new Set(MAJOR_SCALE_OFFSETS.map(offset => (keyPitchClass + offset) % 12))
-    const isKeyNote = keyPitchClasses.has(note % 12)
+    const isKeyNote = isKeyTone(channel, note)
     const isExcluded = channel.excludedNotes.includes(note)
     const isAdditional = channel.additionalNotes.includes(note)
 
@@ -155,6 +179,10 @@ export function useChannels() {
     } else {
       channel.additionalNotes = [...channel.additionalNotes, note].sort((a, b) => a - b)
     }
+  }
+
+  function toggleMicrotones() {
+    currentChannel.value.microtonesEnabled = !currentChannel.value.microtonesEnabled
   }
 
   function cycleStep(payload:any){
@@ -251,12 +279,8 @@ export function useChannels() {
 
   function createVariation(index: number) {
     const channel = channels[index]
-    const keyPitchClass = CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
     const octaveBase = 12 * (channel.octave + 1)
-    const keyPitches = MAJOR_SCALE_OFFSETS.map(offset => octaveBase + ((keyPitchClass + offset) % 12))
-    const toneMaterials = [...new Set([...keyPitches, ...channel.additionalNotes])]
-      .filter(note => !channel.excludedNotes.includes(note))
-      .sort((a, b) => a - b)
+    const toneMaterials = getToneMaterials(channel)
     if (!toneMaterials.length) {
       channel.notes = []
       channel.steps = Array.from({ length: channel.loopLength }, () => -1)
@@ -486,14 +510,15 @@ export function useChannels() {
   }
 
   function shiftChannelNotes(channel: typeof channels[number], direction: 1 | -1) {
-    const keyPitchClass = CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
+    const keyPitchClass = getKeyPitchClass(channel)
     const scalePitchClasses = MAJOR_SCALE_OFFSETS.map(offset => (keyPitchClass + offset) % 12)
     const shiftPitch = (pitch: number) => {
-      let shifted = pitch
+      const fraction = pitch - Math.trunc(pitch)
+      let shifted = Math.trunc(pitch)
       do {
         shifted += direction
       } while (!scalePitchClasses.includes((shifted % 12 + 12) % 12))
-      return shifted
+      return shifted + fraction
     }
 
     const shiftStep = (step: StepValue): StepValue => {
@@ -546,7 +571,8 @@ export function useChannels() {
       loopLength: channel.loopLength,
       arpeggioLength: channel.arpeggioLength,
       quantisation: channel.quantisation,
-      key: channel.key
+      key: channel.key,
+      microtonesEnabled: channel.microtonesEnabled
     }
   }
 
@@ -610,7 +636,8 @@ export function useChannels() {
       typeof value.loopLength === 'number' && Number.isFinite(value.loopLength) &&
       typeof value.arpeggioLength === 'number' && Number.isFinite(value.arpeggioLength) &&
       typeof value.quantisation === 'number' && Number.isFinite(value.quantisation) &&
-      typeof value.key === 'string' && CIRCLE_OF_FIFTHS_KEYS.some(key => key.name === value.key)
+      typeof value.key === 'string' && CIRCLE_OF_FIFTHS_KEYS.some(key => key.name === value.key) &&
+      (!('microtonesEnabled' in value) || typeof value.microtonesEnabled === 'boolean')
   }
 
   function isSeedChannel(value: unknown): value is SeedChannelState {
@@ -660,6 +687,7 @@ export function useChannels() {
     channel.arpeggioLength = state.arpeggioLength
     channel.quantisation = state.quantisation
     channel.key = state.key
+    channel.microtonesEnabled = state.microtonesEnabled ?? false
 
     channel.arpeggiator.setBpm(channel.bpm)
     channel.arpeggiator.setPattern(channel.pattern)
@@ -736,6 +764,7 @@ export function useChannels() {
     target.arpeggioLength = source.arpeggioLength
     target.quantisation = source.quantisation
     target.key = source.key
+    target.microtonesEnabled = source.microtonesEnabled
     target.muted = source.muted
     storedStates.value[targetIndex] = storedStates.value[sourceIndex].map(cloneStoredState)
     activeStoredStateIndexes.value[targetIndex] = activeStoredStateIndexes.value[sourceIndex]
@@ -787,6 +816,7 @@ export function useChannels() {
     toggleMuteAll,
     togglePlay,
     toggleToneMaterial,
+    toggleMicrotones,
     cycleStep,
     clearNotes,
     createVariation,

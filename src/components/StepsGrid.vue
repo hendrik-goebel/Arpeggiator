@@ -5,7 +5,7 @@
     <div v-for="i in stepCountArray" :key="i-1" class="step-col header-cell" :class="{playing: props.playStep === (i-1)}">{{ i }}</div>
     </div>
 
-    <div v-for="note in notes" :key="note" class="row" :class="{ 'in-key': isKeyNote(note) && !isExcludedNote(note), 'additional-note': isAdditionalNote(note), 'excluded-note': isExcludedNote(note) }">
+    <div v-for="note in notes" :key="note" class="row" :class="{ 'in-key': isKeyNote(note) && !isExcludedNote(note), 'additional-note': isAdditionalNote(note), 'excluded-note': isExcludedNote(note), 'microtone-note': isMicrotoneNote(note) }">
       <button type="button" class="note-col" :class="{ selected: isSelectedNote(note) }" @click="$emit('toggle-tone-material', note)">{{ noteName(note) }}</button>
       <div v-for="stepIndex in stepCountArray" :key="stepIndex-1" class="step-col"
            :class="{active: isStepActive(stepIndex - 1, note), sustained: isSustainedSource(stepIndex - 1, note), 'sustain-continuation': isSustainedContinuation(stepIndex - 1, note), playing: props.playStep === (stepIndex-1)}"
@@ -19,7 +19,7 @@ import { computed } from 'vue'
 import { CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_NAMES, OCTAVE_OFFSET, DEFAULT_BASE, MAJOR_SCALE_OFFSETS } from '../config'
 import { isSustainedStep, StepValue, stepNotes } from '../models/arpeggiator'
 
-const props = defineProps<{ notes: number[], steps: StepValue[] | undefined, base?: number, keyRoot?: string, additionalNotes?: number[], excludedNotes?: number[], playStep?: number, stepCount?: number }>()
+const props = defineProps<{ notes: number[], steps: StepValue[] | undefined, base?: number, keyRoot?: string, microtonesEnabled?: boolean, additionalNotes?: number[], excludedNotes?: number[], playStep?: number, stepCount?: number }>()
 
 const emit = defineEmits<{
   (event: 'toggle-tone-material', note: number): void
@@ -36,12 +36,18 @@ const stepCountArray = computed(() => {
 })
 
 function noteName(n:number){
-  const octave = Math.floor(n / 12) + OCTAVE_OFFSET
-  return `${NOTE_NAMES[n % 12]}${octave}`
+  const pitch = Math.floor(n)
+  const octave = Math.floor(pitch / 12) + OCTAVE_OFFSET
+  const suffix = Number.isInteger(n) ? '' : '+'
+  return `${NOTE_NAMES[((pitch % 12) + 12) % 12]}${octave}${suffix}`
 }
 
 function isKeyNote(note: number) {
-  return keyPitchClasses.value.has(note % 12)
+  return keyPitchClasses.value.has((Math.floor(note) % 12 + 12) % 12)
+}
+
+function isMicrotoneNote(note: number) {
+  return props.microtonesEnabled === true && !Number.isInteger(note)
 }
 
 function isAdditionalNote(note: number) {
@@ -92,6 +98,7 @@ function toggleStep(step: number, note: number, event: MouseEvent) {
 .row.in-key .note-col, .row.in-key .step-col { background-color: rgba(104, 216, 195, .08); }
 .row.additional-note .note-col { background-color: rgba(181, 185, 239, .14); }
 .row.excluded-note .note-col { background-color: transparent; color: #71828c; text-decoration: line-through; }
+.row.microtone-note .note-col { letter-spacing: .04em; }
 .note-col { width: 72px; padding: 8px; border: 0; border-right: 1px solid var(--line); background: transparent; color: #a9bac4; cursor: pointer; font: 700 .68rem ui-monospace, monospace; text-align: left; }
 .note-col:hover, .note-col:focus-visible { background-color: rgba(181, 185, 239, .14); outline: none; }
 .note-col.selected { color: var(--teal-soft); }

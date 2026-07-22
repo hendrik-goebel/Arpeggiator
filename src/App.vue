@@ -33,6 +33,7 @@
       @toggle-tone-material="toggleToneMaterial" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
       @select-output="(id)=>{ selectedOutputId = id }" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @update-octave="updateArpeggioOctave" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
       @update-arpeggio-length="updateArpeggioLength" @channel-variation="handleVariation" @shift-notes="handleShiftNotes" @toggle-global-actions="globalActions = !globalActions"
+      @toggle-microtones="toggleMicrotones"
       @store-state="handleStoreState" @apply-stored-state="handleApplyStoredState"
       @set-clock-output="setClockOutput" @set-clock-input="setClockInput" />
 
@@ -76,6 +77,7 @@ const {
   updateMidiChannel,
   togglePlay,
   toggleToneMaterial,
+  toggleMicrotones,
   cycleStep,
   clearNotes,
   playKeyboardNote,

@@ -9,7 +9,7 @@ let sineSynthEnabled = false
 let audioContext: AudioContext | null = null
 
 function clampMidiValue(value: number) {
-  const n = Math.floor(Number(value) || 0)
+  const n = Math.round(Number(value) || 0)
   return Math.max(0, Math.min(127, n))
 }
 

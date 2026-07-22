@@ -23,6 +23,7 @@ export interface Channel {
   midiChannel: number
   quantisation: number
   key: CircleOfFifthsKey
+  microtonesEnabled: boolean
   arpeggiator: ReturnType<typeof createArpeggiator>
   color: string
   active: boolean
@@ -44,6 +45,7 @@ export interface StoredArpeggiatorState {
   arpeggioLength: number
   quantisation: number
   key: CircleOfFifthsKey
+  microtonesEnabled?: boolean
 }
 
 export function createChannel(index: number, selectedOutputId: Ref<string | null>, log: Ref<string[]>) : Channel {
@@ -68,6 +70,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     midiChannel: index + 1,
     quantisation: DEFAULT_QUANT,
     key: 'C' as CircleOfFifthsKey,
+    microtonesEnabled: false,
     arpeggiator,
     color: '#c94f5e',
     active: false,
