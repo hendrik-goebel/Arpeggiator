@@ -14,7 +14,6 @@ export const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
 export const OCTAVE_OFFSET = -1
 export const DEFAULT_STEPS = [60,64,67,60,64,67,60,64,60,64,67,60,64,67,60,64]
 export const DEFAULT_NOTES = [60,64,67]
-export const CHORD_NOTE_CHANGE_PROBABILITY = 0.5
 export const DEFAULT_BASE = 60
 export const DEFAULT_ARPEGGIO_OCTAVE = 4
 export const ARPEGGIO_OCTAVES = Array.from({ length: 8 }, (_, index) => index + 1)

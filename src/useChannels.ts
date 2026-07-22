@@ -3,10 +3,11 @@ import { initMidi, listOutputs, listInputs, getOutput, getInput, selectOutput, s
 import { createMidiClockInput, createMidiClockOutput } from './midi/clockSync'
 import { createChannel, StoredArpeggiatorState } from './models/channel'
 import { isSustainedStep, Pattern, stepNotes, StepValue } from './models/arpeggiator'
-import { ARPEGGIO_OCTAVES, CHANNEL_COUNT, CHORD_NOTE_CHANGE_PROBABILITY, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds, STORED_STATE_COUNT } from './config'
+import { ARPEGGIO_OCTAVES, CHANNEL_COUNT, DEFAULT_BPM, KEYBOARD_NOTE_OFFSETS, MAJOR_SCALE_OFFSETS, CIRCLE_OF_FIFTHS_KEYS, STEP_COUNT, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey, noteLengthToMilliseconds, STORED_STATE_COUNT } from './config'
 import { MIDI } from './midi/constants'
 
 const SEED_PREFIX = 'ARP1-'
+const ADDITIONAL_VARIATION_CHANGE_CHANCE = 0.35
 
 interface SeedChannelState extends StoredArpeggiatorState {
   midiChannel: number
@@ -242,6 +243,12 @@ export function useChannels() {
     channel.arpeggiator.setSteps(channel.steps)
   }
 
+  function variationChangeCount(maximum: number) {
+    let changes = 1
+    while (changes < maximum && Math.random() < ADDITIONAL_VARIATION_CHANGE_CHANCE) changes++
+    return changes
+  }
+
   function createVariation(index: number) {
     const channel = channels[index]
     const keyPitchClass = CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
@@ -259,9 +266,27 @@ export function useChannels() {
     }
     const length = Math.max(1, Math.min(32, Math.floor(channel.arpeggioLength)))
     const shuffled = toneMaterials.slice().sort(() => Math.random() - 0.5)
-    const selected = shuffled.slice(0, Math.min(length, shuffled.length))
+    const currentSelection = [...new Set(channel.notes.filter(note => toneMaterials.includes(note)))]
+    const selected = currentSelection.length
+      ? currentSelection.slice(0, length)
+      : shuffled.slice(0, Math.min(length, shuffled.length))
     while (selected.length < length) {
       selected.push(toneMaterials[Math.floor(Math.random() * toneMaterials.length)])
+    }
+    const replacements = new Map<number, number>()
+    if (currentSelection.length) {
+      const positions = Array.from({ length: selected.length }, (_, position) => position)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, variationChangeCount(selected.length))
+
+      positions.forEach(position => {
+        const currentNote = selected[position]
+        const candidates = toneMaterials.filter(note => !selected.includes(note))
+        if (!candidates.length) return
+        const replacement = candidates[Math.floor(Math.random() * candidates.length)]
+        selected[position] = replacement
+        replacements.set(currentNote, replacement)
+      })
     }
     selected.sort((a, b) => a - b)
     const notes: number[] = []
@@ -277,20 +302,7 @@ export function useChannels() {
     }
 
     const varyChord = (chord: number[]) => {
-      const variedChord: number[] = []
-      chord.forEach(note => {
-        const shouldChange = !toneMaterials.includes(note) || Math.random() < CHORD_NOTE_CHANGE_PROBABILITY
-        if (!shouldChange) {
-          variedChord.push(note)
-          return
-        }
-
-        const candidates = toneMaterials.filter(candidate => candidate !== note && !variedChord.includes(candidate))
-        variedChord.push(candidates.length
-          ? candidates[Math.floor(Math.random() * candidates.length)]
-          : note)
-      })
-      return [...new Set(variedChord)].sort((a, b) => a - b)
+      return [...new Set(chord.map(note => replacements.get(note) ?? note))].sort((a, b) => a - b)
     }
 
     const hadNotes = channel.notes.length > 0
