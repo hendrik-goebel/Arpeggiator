@@ -337,13 +337,18 @@ export function useChannels() {
       const quantisation = quantisations[Math.floor(Math.random() * quantisations.length)]
       const noteLength = NOTE_LENGTH_OPTIONS[Math.floor(Math.random() * NOTE_LENGTH_OPTIONS.length)]
       const octave = ARPEGGIO_OCTAVES[Math.floor(Math.random() * ARPEGGIO_OCTAVES.length)]
+      const arpeggioLength = 1 + Math.floor(Math.random() * 8)
+      const loopLength = 8 + Math.floor(Math.random() * 9)
       channel.pattern = pattern
       channel.quantisation = quantisation
       channel.noteLength = noteLength
       channel.octave = octave
+      channel.arpeggioLength = arpeggioLength
+      channel.loopLength = loopLength
       channel.arpeggiator.setPattern(pattern)
       channel.arpeggiator.setSubdivision(quantisation)
       channel.arpeggiator.setNoteLength(noteLength)
+      channel.arpeggiator.setLoopLength(loopLength)
     })
     createGlobalVariation()
     channels.forEach((channel, index) => {
