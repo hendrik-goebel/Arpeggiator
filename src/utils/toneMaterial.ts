@@ -1,0 +1,23 @@
+import { CIRCLE_OF_FIFTHS_KEYS, MAJOR_SCALE_OFFSETS, MICROTONAL_STEP } from '../config'
+
+export interface ToneMaterialSource {
+  key: string
+  octave: number
+  microtonesEnabled: boolean
+  additionalNotes: number[]
+  excludedNotes: number[]
+}
+
+export function getToneMaterials(channel: ToneMaterialSource) {
+  const octaveBase = 12 * (channel.octave + 1)
+  const keyPitchClass = CIRCLE_OF_FIFTHS_KEYS.find(key => key.name === channel.key)?.pitchClass ?? 0
+
+  const keyPitches = MAJOR_SCALE_OFFSETS.map(offset => octaveBase + ((keyPitchClass + offset) % 12))
+  const microtonePitches = channel.microtonesEnabled
+    ? keyPitches.map(note => note + MICROTONAL_STEP)
+    : []
+
+  return [...new Set([...keyPitches, ...microtonePitches, ...channel.additionalNotes])]
+    .filter(note => !channel.excludedNotes.includes(note))
+    .sort((a, b) => a - b)
+}

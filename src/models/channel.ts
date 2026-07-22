@@ -15,6 +15,7 @@ export interface Channel {
   notes: number[]
   additionalNotes: number[]
   excludedNotes: number[]
+  reduceNotes: boolean
   steps: StepValue[]
   base: number
   octave: number
@@ -62,6 +63,7 @@ export function createChannel(index: number, selectedOutputId: Ref<string | null
     notes: DEFAULT_NOTES.slice() as number[],
     additionalNotes: [] as number[],
     excludedNotes: [] as number[],
+    reduceNotes: false,
     steps: DEFAULT_STEPS.slice() as StepValue[],
     base: DEFAULT_BASE,
     octave: DEFAULT_ARPEGGIO_OCTAVE,

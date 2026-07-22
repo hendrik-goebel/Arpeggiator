@@ -43,7 +43,7 @@ function noteName(n:number){
 }
 
 function isKeyNote(note: number) {
-  return keyPitchClasses.value.has((Math.floor(note) % 12 + 12) % 12)
+  return Number.isInteger(note) && keyPitchClasses.value.has((note % 12 + 12) % 12)
 }
 
 function isMicrotoneNote(note: number) {

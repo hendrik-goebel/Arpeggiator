@@ -5,15 +5,20 @@ import LogPanel from './LogPanel.vue'
 import StepperControl from './StepperControl.vue'
 import { ARPEGGIO_OCTAVES, DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE, MICROTONAL_STEP, NOTE_LENGTH_OPTIONS } from '../config'
 import { StoredArpeggiatorState } from '../models/channel'
+import { getToneMaterials } from '../utils/toneMaterial'
 
 const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, clockOutputs: any[], clockInputs: any[], clockOutputId: string | null, clockInputId: string | null, log: string[], storedStates: (StoredArpeggiatorState | null)[], activeStoredStateIndex: number | null, globalActions: boolean }>()
 
 const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
+const toneMaterialNotes = computed(() => props.channel ? getToneMaterials(props.channel) : [])
 const fullNotes = computed(() => {
   const step = props.channel?.microtonesEnabled ? MICROTONAL_STEP : 1
   const length = props.channel?.microtonesEnabled ? KEYBOARD_OCTAVE_SIZE * 2 : KEYBOARD_OCTAVE_SIZE
   return Array.from({ length }, (_, i) => base.value + i * step).reverse()
 })
+const displayedNotes = computed(() => props.channel?.reduceNotes
+  ? fullNotes.value.filter(note => toneMaterialNotes.value.includes(note))
+  : fullNotes.value)
 </script>
 
 <template>
@@ -40,7 +45,8 @@ const fullNotes = computed(() => {
 
     <div class="sequencer">
       <button type="button" class="microtones-button" :class="{ active: channel.microtonesEnabled }" :aria-pressed="channel.microtonesEnabled" @click="$emit('toggle-microtones')">micro</button>
-      <StepsGrid :notes="fullNotes" :steps="channel.steps" :base="channel.base" :key-root="channel.key" :microtones-enabled="channel.microtonesEnabled" :additional-notes="channel.additionalNotes" :excluded-notes="channel.excludedNotes" :play-step="channel.playStep" :step-count="channel.loopLength" @toggle-tone-material="$emit('toggle-tone-material', $event)" @toggle-step="$emit('cycle-step', $event)" />
+      <button type="button" class="reduce-button" :class="{ active: channel.reduceNotes }" :aria-pressed="channel.reduceNotes" @click="$emit('toggle-reduce-notes')">reduce</button>
+      <StepsGrid :notes="displayedNotes" :steps="channel.steps" :base="channel.base" :key-root="channel.key" :microtones-enabled="channel.microtonesEnabled" :additional-notes="channel.additionalNotes" :excluded-notes="channel.excludedNotes" :play-step="channel.playStep" :step-count="channel.loopLength" @toggle-tone-material="$emit('toggle-tone-material', $event)" @toggle-step="$emit('cycle-step', $event)" />
     </div>
     <div class="state-storage">
       <button class="variation-button" @click="$emit('channel-variation')">var</button>
@@ -142,6 +148,20 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
   cursor: pointer;
 }
 .microtones-button.active { border-color: var(--lavender); background: var(--lavender-deep); color: var(--lavender-soft); }
+.reduce-button {
+  display: inline-flex;
+  margin: 0 0 .55rem .4rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  padding: .45rem .75rem;
+  background: #1c2a33;
+  color: var(--text-muted);
+  font-size: .56rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+.reduce-button.active { border-color: var(--teal); background: var(--teal-deep); color: var(--teal-soft); }
 .state-storage {
   display: flex; flex-wrap: wrap; gap: .45rem; align-items: center;
   margin-top: .85rem; padding: 1rem;
