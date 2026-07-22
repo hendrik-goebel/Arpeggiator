@@ -26,13 +26,13 @@
     </section>
 
 
-    <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId"
+    <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :global-actions="globalActions"
       :clock-outputs="clockOutputs" :clock-inputs="clockInputs" :clock-output-id="clockOutputId" :clock-input-id="clockInputId" :log="log"
       :stored-states="currentStoredStates"
       :active-stored-state-index="currentActiveStoredStateIndex"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
       @select-output="(id)=>{ selectedOutputId = id }" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @update-octave="updateArpeggioOctave" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
-      @update-arpeggio-length="updateArpeggioLength" @channel-variation="() => createVariation(currentIndex)" @shift-notes="shiftCurrentChannelNotes"
+      @update-arpeggio-length="updateArpeggioLength" @channel-variation="handleVariation" @shift-notes="handleShiftNotes" @toggle-global-actions="globalActions = !globalActions"
       @store-state="storeCurrentState" @apply-stored-state="applyStoredState"
       @set-clock-output="setClockOutput" @set-clock-input="setClockInput" />
 
@@ -98,6 +98,7 @@ const {
   updateQuantisation,
   updateArpeggioOctave,
   shiftCurrentChannelNotes,
+  shiftAllChannelNotes,
   currentStoredStates,
   currentActiveStoredStateIndex,
   storeCurrentState,
@@ -109,6 +110,17 @@ const {
 
 const seedKey = ref('')
 const seedStatus = ref('')
+const globalActions = ref(false)
+
+function handleVariation() {
+  if (globalActions.value) createGlobalVariation()
+  else createVariation(currentIndex.value)
+}
+
+function handleShiftNotes(direction: 1 | -1) {
+  if (globalActions.value) shiftAllChannelNotes(direction)
+  else shiftCurrentChannelNotes(direction)
+}
 
 useKeyboard({
   currentIndex,

@@ -6,7 +6,7 @@ import StepperControl from './StepperControl.vue'
 import { ARPEGGIO_OCTAVES, DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE, NOTE_LENGTH_OPTIONS } from '../config'
 import { StoredArpeggiatorState } from '../models/channel'
 
-const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, clockOutputs: any[], clockInputs: any[], clockOutputId: string | null, clockInputId: string | null, log: string[], storedStates: (StoredArpeggiatorState | null)[], activeStoredStateIndex: number | null }>()
+const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, clockOutputs: any[], clockInputs: any[], clockOutputId: string | null, clockInputId: string | null, log: string[], storedStates: (StoredArpeggiatorState | null)[], activeStoredStateIndex: number | null, globalActions: boolean }>()
 
 const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
 const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
@@ -53,6 +53,7 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
         >{{ index + 1 }}</button>
       </div>
       <button class="clear-button" @click="$emit('clear-notes')">Clear grid</button>
+      <button class="global-button" :class="{ active: globalActions }" :aria-pressed="globalActions" @click="$emit('toggle-global-actions')">global</button>
     </div>
     <div class="routing-section">
       <div class="control-column routing">
@@ -115,6 +116,12 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
   background: #1c2a33; color: var(--coral); font-size: .56rem; font-weight: 800;
   letter-spacing: .06em; cursor: pointer;
 }
+.global-button {
+  border: 1px solid var(--line-strong); border-radius: 4px; padding: .5rem .7rem;
+  background: #1c2a33; color: var(--text-muted); font-size: .56rem; font-weight: 800;
+  letter-spacing: .06em; cursor: pointer;
+}
+.global-button.active { border-color: var(--teal); background: var(--teal-deep); color: var(--teal-soft); }
 .sequencer { overflow-x: auto; }
 .state-storage {
   display: flex; flex-wrap: wrap; gap: .45rem; align-items: center;
