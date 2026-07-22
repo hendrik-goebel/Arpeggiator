@@ -9,7 +9,7 @@ import { StoredArpeggiatorState } from '../models/channel'
 const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, clockOutputs: any[], clockInputs: any[], clockOutputId: string | null, clockInputId: string | null, log: string[], storedStates: (StoredArpeggiatorState | null)[], activeStoredStateIndex: number | null, globalActions: boolean }>()
 
 const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
-const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
+const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i).reverse())
 </script>
 
 <template>
