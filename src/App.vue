@@ -49,11 +49,12 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import ChannelsBar from './components/ChannelsBar.vue'
 import ArpeggiatorPanel from './components/ArpeggiatorPanel.vue'
 import { useChannels } from './useChannels'
 import { CIRCLE_OF_FIFTHS_KEYS } from './config'
+import { useKeyboard } from './useKeyboard'
 
 const {
   channels,
@@ -66,7 +67,6 @@ const {
   setGlobalBpm,
   updateGlobalKey,
   toggleGlobalPlay,
-  stopAll,
   createGlobalVariation,
   selectChannel,
   toggleChannelPlay,
@@ -109,68 +109,23 @@ const {
 const seedKey = ref('')
 const seedStatus = ref('')
 
-function handleKeydown(event: KeyboardEvent) {
-  if (event.repeat) return
-
-  const target = event.target
-  if (target instanceof HTMLElement &&
-      (target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(target.tagName))) {
-    return
-  }
-
-  const key = event.key.toLowerCase()
-  if (event.metaKey && key === 'm') {
-    toggleMuteAll()
-    event.preventDefault()
-    return
-  }
-  if (event.metaKey && key === 'v') {
-    createGlobalVariation()
-    event.preventDefault()
-    return
-  }
-
-  if (!event.metaKey && !event.ctrlKey && !event.altKey) {
-    if (/^[1-8]$/.test(event.key)) {
-      selectChannel(Number(event.key) - 1)
-      event.preventDefault()
-      return
-    }
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      const direction = event.key === 'ArrowLeft' ? -1 : 1
-      selectChannel((currentIndex.value + direction + channels.length) % channels.length)
-      event.preventDefault()
-      return
-    }
-    if (key === 'm') {
-      toggleMute(currentIndex.value)
-      event.preventDefault()
-      return
-    }
-    if (event.key === ' ') {
-      togglePlay()
-      event.preventDefault()
-      return
-    }
-    if (key === 'v') {
-      createVariation(currentIndex.value)
-      event.preventDefault()
-      return
-    }
-  }
-
-  if (!event.getModifierState('CapsLock')) return
-  if (playKeyboardNote(event.key)) event.preventDefault()
-}
-
+useKeyboard({
+  currentIndex,
+  channelCount: channels.length,
+  selectChannel,
+  toggleMute,
+  toggleMuteAll,
+  togglePlay,
+  createVariation,
+  createGlobalVariation,
+  playKeyboardNote
+})
 onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
   void enableMidi().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error)
     log.value.unshift(`${new Date().toISOString()} MIDI unavailable: ${message}`)
   })
 })
-onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 </script>
 
 <style scoped>
