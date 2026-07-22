@@ -11,18 +11,12 @@
         </label>
         <button class="master-play" @click="toggleGlobalPlay">{{ globalPlaying ? 'Stop All' : 'Start All' }}</button>
         <button class="master-mute" @click="toggleMuteAll">{{ allMuted ? 'Unmute All' : 'Mute All' }}</button>
-        <label class="clock-control">CLOCK OUT
-          <select :value="clockOutputId" @change="setClockOutput($event.target.value || null)">
-            <option value="">Off</option>
-            <option v-for="output in clockOutputs" :key="output.id" :value="output.id">{{ output.name }}</option>
+        <label class="global-key-control">GLOBAL KEY
+          <select :value="globalKey" @change="updateGlobalKey($event.target.value)">
+            <option v-for="key in CIRCLE_OF_FIFTHS_KEYS" :key="key.name" :value="key.name">{{ key.name }}</option>
           </select>
         </label>
-        <label class="clock-control">CLOCK IN
-          <select :value="clockInputId" @change="setClockInput($event.target.value || null)">
-            <option value="">Off</option>
-            <option v-for="input in clockInputs" :key="input.id" :value="input.id">{{ input.name }}</option>
-          </select>
-        </label>
+        <button class="global-variation" @click="createGlobalVariation">Var all</button>
       </div>
     </section>
 
@@ -32,14 +26,15 @@
     </section>
 
 
-    <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId" :log="log"
-      :global-key="globalKey"
+    <ArpeggiatorPanel :channel="currentChannel" :outputs="outputs" :selectedOutputId="selectedOutputId"
+      :clock-outputs="clockOutputs" :clock-inputs="clockInputs" :clock-output-id="clockOutputId" :clock-input-id="clockInputId" :log="log"
       :stored-states="currentStoredStates"
       :active-stored-state-index="currentActiveStoredStateIndex"
       @toggle-note="toggleNote" @cycle-step="cycleStep" @toggle-play="togglePlay" @enable-midi="enableMidi"
       @select-output="(id)=>{ selectedOutputId = id }" @update-pattern="updatePattern" @update-noteLength="updateNoteLength" @update-octave="updateArpeggioOctave" @clear-notes="clearNotes" @update-loop-length="updateLoopLength" @update-quant="updateQuantisation"
-      @update-arpeggio-length="updateArpeggioLength" @update-global-key="updateGlobalKey" @global-variation="createGlobalVariation" @channel-variation="() => createVariation(currentIndex)"
-      @store-state="storeCurrentState" @apply-stored-state="applyStoredState" />
+      @update-arpeggio-length="updateArpeggioLength" @channel-variation="() => createVariation(currentIndex)"
+      @store-state="storeCurrentState" @apply-stored-state="applyStoredState"
+      @set-clock-output="setClockOutput" @set-clock-input="setClockInput" />
 
     <section class="seed-panel module">
       <h2>SEED</h2>
@@ -58,6 +53,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import ChannelsBar from './components/ChannelsBar.vue'
 import ArpeggiatorPanel from './components/ArpeggiatorPanel.vue'
 import { useChannels } from './useChannels'
+import { CIRCLE_OF_FIFTHS_KEYS } from './config'
 
 const {
   channels,
@@ -179,7 +175,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 
 <style scoped>
 .instrument {
-  width: min(1180px, calc(100% - 2rem));
+  width: 862px;
   margin: 2rem auto;
   color: var(--text);
 }
@@ -237,6 +233,13 @@ h2 { color: var(--text-muted); font-size: .7rem; letter-spacing: .16em; }
   border: 1px solid var(--coral); border-radius: 5px; padding: .7rem 1rem; background: var(--coral-deep);
   color: var(--coral-soft); font-size: .65rem; font-weight: 800; letter-spacing: .1em; cursor: pointer;
 }
+.global-key-control { display: grid; gap: .3rem; color: var(--text-muted); font-size: .55rem; font-weight: 800; letter-spacing: .1em; }
+.global-key-control select { width: 5rem; border: 1px solid var(--line-strong); border-radius: 4px; padding: .35rem; background: var(--bg-control); color: var(--text); font: 600 .65rem ui-monospace, monospace; }
+.global-variation {
+  align-self: end; border: 1px solid var(--lavender); border-radius: 4px; padding: .45rem .8rem;
+  background: var(--lavender-deep); color: var(--lavender-soft); font-size: .62rem; font-weight: 800;
+  letter-spacing: .08em; cursor: pointer;
+}
 .clock-control { display: grid; gap: .3rem; color: var(--text-muted); font-size: .55rem; font-weight: 800; letter-spacing: .1em; }
 .clock-control select { max-width: 10rem; border: 1px solid var(--line-strong); border-radius: 4px; padding: .35rem; background: var(--bg-control); color: var(--text); font-size: .65rem; }
 .master-stop {
@@ -261,7 +264,7 @@ h2 { color: var(--text-muted); font-size: .7rem; letter-spacing: .16em; }
 .seed-actions .seed-load { border-color: var(--lavender); color: var(--lavender-soft); background: var(--lavender-deep); }
 .seed-status { color: var(--text-muted); font-size: .62rem; }
 @media (max-width: 650px) {
-  .instrument { width: min(100% - 1rem, 1180px); margin-top: 1rem; }
+  .instrument { margin-top: 1rem; }
   .instrument-header, .global-controls { align-items: flex-start; flex-direction: column; gap: 1rem; }
   .global-controls { padding: 1rem; }
   .seed-actions { align-items: flex-start; flex-direction: column; }

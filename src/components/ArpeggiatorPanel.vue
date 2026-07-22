@@ -3,10 +3,10 @@ import { computed } from 'vue'
 import StepsGrid from './StepsGrid.vue'
 import LogPanel from './LogPanel.vue'
 import StepperControl from './StepperControl.vue'
-import { ARPEGGIO_OCTAVES, CIRCLE_OF_FIFTHS_KEYS, DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE, NOTE_LENGTH_OPTIONS, CircleOfFifthsKey } from '../config'
+import { ARPEGGIO_OCTAVES, DEFAULT_BASE, KEYBOARD_OCTAVE_SIZE, NOTE_LENGTH_OPTIONS } from '../config'
 import { StoredArpeggiatorState } from '../models/channel'
 
-const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, log: string[], globalKey: CircleOfFifthsKey, storedStates: (StoredArpeggiatorState | null)[], activeStoredStateIndex: number | null }>()
+const props = defineProps<{ channel: any, outputs: any[], selectedOutputId: string | null, clockOutputs: any[], clockInputs: any[], clockOutputId: string | null, clockInputId: string | null, log: string[], storedStates: (StoredArpeggiatorState | null)[], activeStoredStateIndex: number | null }>()
 
 const base = computed(() => props.channel?.base ?? DEFAULT_BASE)
 const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_, i) => base.value + i))
@@ -15,14 +15,9 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
 <template>
   <section class="arpeggiator-panel">
     <div class="controls">
-      <div class="control-section global-note-section">
-        <h3>GLOBAL NOTES</h3>
-        <label>Global key
-          <select :value="globalKey" @change="$emit('update-global-key', $event.target.value)">
-            <option v-for="key in CIRCLE_OF_FIFTHS_KEYS" :key="key.name" :value="key.name">{{ key.name }}</option>
-          </select>
-        </label>
-        <button class="global-variation" @click="$emit('global-variation')">Var all</button>
+      <div class="channel-section-heading">
+        <span class="module-index">{{ String(channel.id + 1).padStart(2, '0') }}</span>
+        <h3>CHANNEL {{ channel.id + 1 }}</h3>
       </div>
       <div class="control-section sequence-section">
         <h3>SEQUENCE</h3>
@@ -59,7 +54,23 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
     </div>
     <div class="routing-section">
       <div class="control-column routing">
-        <label>Output <select :value="selectedOutputId" @change="$emit('select-output', $event.target.value)"><option v-for="o in outputs" :key="o.id" :value="o.id">{{ o.name }}</option></select></label>
+        <label>Output
+          <select :value="selectedOutputId" @change="$emit('select-output', $event.target.value)">
+            <option v-for="o in outputs" :key="o.id" :value="o.id">{{ o.name }}</option>
+          </select>
+        </label>
+        <label>Clock out
+          <select :value="clockOutputId" @change="$emit('set-clock-output', $event.target.value || null)">
+            <option value="">Off</option>
+            <option v-for="output in clockOutputs" :key="output.id" :value="output.id">{{ output.name }}</option>
+          </select>
+        </label>
+        <label>Clock in
+          <select :value="clockInputId" @change="$emit('set-clock-input', $event.target.value || null)">
+            <option value="">Off</option>
+            <option v-for="input in clockInputs" :key="input.id" :value="input.id">{{ input.name }}</option>
+          </select>
+        </label>
       </div>
     </div>
 
@@ -68,6 +79,8 @@ const fullNotes = computed(() => Array.from({ length: KEYBOARD_OCTAVE_SIZE }, (_
 
 <style scoped>
 .arpeggiator-panel { padding: 1.25rem; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-panel); }
+.channel-section-heading { display: flex; align-items: center; gap: .7rem; margin: .25rem 0 -.45rem; }
+.channel-section-heading h3 { color: var(--text-muted); }
 .panel-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
 .panel-title p, h2, h3 { margin: 0; }
 .panel-title p, h3, label, .section-label { color: var(--text-muted); font-size: .62rem; font-weight: 800; letter-spacing: .13em; }
@@ -80,16 +93,11 @@ h2 { color: #effaff; font-size: 1.15rem; letter-spacing: .08em; }
 .control-section, .routing-section { border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--line); }
 .control-section { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem 1rem; padding: 1rem; background: var(--bg-raised); }
 .sequence-section { grid-template-columns: minmax(5.5rem, auto) repeat(6, minmax(0, 1fr)); align-items: end; }
-.global-note-section { grid-template-columns: minmax(5.5rem, auto) auto auto; align-items: end; justify-content: start; justify-items: start; }
 .routing-section { grid-template-columns: 1fr; }
 .control-column { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem 1rem; padding: 1rem; background: var(--bg-raised); }
 .control-section h3 { grid-column: 1 / -1; color: var(--teal); }
 .sequence-section h3 { grid-column: auto; }
 .control-section label { display: grid; gap: .38rem; }
-.global-note-section h3 { grid-column: auto; color: var(--teal); }
-.global-note-section label { justify-self: start; }
-.global-note-section select { width: 5rem; }
-.global-variation { align-self: end; justify-self: start; border: 1px solid var(--lavender); border-radius: 4px; padding: .45rem .8rem; background: var(--lavender-deep); color: var(--lavender-soft); font-size: .62rem; font-weight: 800; letter-spacing: .08em; cursor: pointer; }
 .control-column h3 { grid-column: 1 / -1; color: var(--teal); }
 .control-column label { display: grid; gap: .38rem; }
 select, input { min-width: 0; box-sizing: border-box; border: 1px solid var(--line-strong); border-radius: 4px; padding: .45rem .5rem; background: var(--bg-control); color: #e7f6fb; font: 600 .75rem ui-monospace, monospace; outline: none; }
@@ -97,7 +105,7 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
 .value-input { display: flex; align-items: center; border-bottom: 1px solid var(--line-strong); }
 .value-input input { width: 100%; border: 0; border-radius: 0; background: transparent; padding: .35rem 0; }
 .value-input small { color: var(--teal); font-size: .55rem; }
-.routing { grid-template-columns: minmax(0, 1fr) 2fr; }
+.routing { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .routing h3 { grid-column: 1 / -1; }
 .clear-button {
   margin-left: auto;
@@ -125,5 +133,5 @@ select:focus, input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgb
 .stored-state-button.active { border-color: var(--teal); background: var(--teal-deep); color: var(--teal-soft); box-shadow: 0 0 8px rgba(104, 216, 195, .28); }
 .section-label { display: flex; justify-content: space-between; margin: 0 0 .6rem; }
 .section-label span { color: #52636f; font-size: .55rem; }
-@media (max-width: 560px) { .arpeggiator-panel { padding: .8rem; } .global-note-section, .sequence-section { grid-template-columns: 1fr 1fr; } .global-note-section h3, .sequence-section h3 { grid-column: 1 / -1; } .routing { grid-template-columns: 1fr; } .control-column { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .arpeggiator-panel { padding: .8rem; } .sequence-section { grid-template-columns: 1fr 1fr; } .sequence-section h3 { grid-column: 1 / -1; } .routing { grid-template-columns: 1fr; } .control-column { grid-template-columns: 1fr 1fr; } }
 </style>
